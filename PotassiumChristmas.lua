@@ -1160,8 +1160,10 @@ selectTab = function(tab)
     end
     renderPage()
     if motion then
-        page.Position = UDim2.fromOffset(30, page.Position.Y.Offset)
-        animate(page, 0.22, {Position = UDim2.fromOffset(20, page.Position.Y.Offset)})
+        local x = page.Position.X.Offset
+        local y = page.Position.Y.Offset
+        page.Position = UDim2.fromOffset(x + 10, y)
+        animate(page, 0.22, {Position = UDim2.fromOffset(x, y)})
     end
 end
 for name, entry in pairs(navItems) do
