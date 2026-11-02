@@ -4,6 +4,7 @@
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 if not player then return end
@@ -15,8 +16,9 @@ local assets = {
     landscape = {url = assetBase .. "CocoBackgroundLandscape.jpg", file = "coco_hub_landscape_v1.jpg", signature = "\255\216\255"},
     portrait = {url = assetBase .. "CocoBackgroundPortrait.jpg", file = "coco_hub_portrait_v1.jpg", signature = "\255\216\255"},
     logo = {url = assetBase .. "CocoLogo.png", file = "coco_hub_logo_v1.png", signature = "\137PNG"},
+    audio = {url = assetBase .. "CocoLoaderAudio.mp3", file = "coco_hub_intro_audio_v1.mp3", signature = "ID3"},
 }
-local duration = 10.2
+local duration = 10.5
 
 for _, parent in ipairs({CoreGui, playerGui}) do
     for _, name in ipairs({"PotassiumLoader", "CookieHubChristmas", "CookieHubGui", "CocoHubLoader"}) do
@@ -123,11 +125,9 @@ local logo = make("ImageLabel", {
     Name = "CoconutLogo",
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromOffset(300, 76),
-    Size = UDim2.fromOffset(116, 106),
+    Size = UDim2.fromOffset(240, 160),
     BackgroundTransparency = 1,
     ImageTransparency = 1,
-    ImageRectOffset = Vector2.new(455, 255),
-    ImageRectSize = Vector2.new(640, 560),
     ZIndex = 6,
 }, content)
 
@@ -256,14 +256,35 @@ local function downloadAsset(entry)
     end
 end
 
+local audioResolved = false
+local soundStarted = false
+local function startSound()
+    if soundStarted or not assets.audio.asset or not intro.Parent then return end
+    local sound = make("Sound", {
+        Name = "CocoIntroAudio",
+        SoundId = assets.audio.asset,
+        Volume = 0.8,
+        Looped = false,
+    }, intro)
+    local ok = pcall(function() SoundService:PlayLocalSound(sound) end)
+    if not ok then ok = pcall(function() sound:Play() end) end
+    if ok then soundStarted = true else sound:Destroy() end
+end
+
 for _, entry in pairs(assets) do
     task.spawn(function()
         downloadAsset(entry)
+        if entry == assets.audio then
+            audioResolved = true
+            if soundStarted then return end
+        end
         if not intro.Parent then return end
         if entry == assets.logo and entry.asset then
             logo.Image = entry.asset
             logoFallback.Visible = false
             animate(logo, 0.4, {ImageTransparency = 0})
+        elseif entry == assets.audio then
+            startSound()
         else
             updateLayout()
         end
@@ -281,6 +302,10 @@ snowConnection = RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
+local audioWaitStarted = os.clock()
+while gui.Parent and not audioResolved and os.clock() - audioWaitStarted < 3 do task.wait(0.05) end
+if not gui.Parent then return end
+startSound()
 local started = os.clock()
 while gui.Parent and os.clock() - started < duration do
     local progress = math.clamp((os.clock() - started) / duration, 0, 1)
