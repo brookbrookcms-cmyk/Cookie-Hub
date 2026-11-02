@@ -6,9 +6,9 @@ Paste this into Delta:
 loadstring(game:HttpGet("https://raw.githubusercontent.com/brookbrookcms-cmyk/Cookie-Hub/main/PotassiumChristmas.lua"))()
 ```
 
-The Christmas loader opens the Coco Hub main UI when it finishes. The first prototype includes Home, Game, Combat, Movement, Visuals, Configs, and More. Navigation, search, the reopen button, visual settings, and module slots are interactive. No gameplay modules are bundled yet.
+The Christmas loader opens a monochrome Coco Hub UI. Home follows the supplied reference with a slim navigation rail, a coconut logo, video preview, live player and game details, and FPS/Ping displays. Game, Combat, Movement, Visuals, Configs, and More hold future modules. The video preview is a placeholder until a Roblox video asset ID is supplied; it does not stream the local MP4.
 
-Once the hub is open, future Lua modules can register a card in a section:
+Once the hub opens, modules can register a card:
 
 ```lua
 getgenv().CocoHub:RegisterModule({
@@ -21,4 +21,8 @@ getgenv().CocoHub:RegisterModule({
 })
 ```
 
-The hub displays registered modules in their sections and runs their `run` function when their **Run** button is pressed. [CocoHubPrototype.jpg](CocoHubPrototype.jpg) is a design draft of the intended look.
+To connect an uploaded Roblox preview video:
+
+```lua
+getgenv().CocoHub:SetPreviewAssetId(123456789)
+```

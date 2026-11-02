@@ -17,6 +17,8 @@ local assets = {
     portrait = {url = assetBase .. "CocoBackgroundPortrait.jpg", file = "coco_hub_portrait_v1.jpg", signature = "\255\216\255"},
     logo = {url = assetBase .. "CocoLogo.png", file = "coco_hub_logo_v1.png", signature = "\137PNG"},
     audio = {url = assetBase .. "CocoLoaderAudio.mp3", file = "coco_hub_intro_audio_v1.mp3", signature = "ID3"},
+    hubBackground = {url = assetBase .. "CocoMonoBackground.jpg", file = "coco_hub_mono_background_v1.jpg", signature = "\255\216\255"},
+    hubLogo = {url = assetBase .. "CocoMonoLogo.png", file = "coco_hub_mono_logo_v1.png", signature = "\137PNG"},
 }
 local duration = 10.5
 
@@ -343,305 +345,292 @@ local veil = make("Frame", {
 animate(veil, 0.4, {BackgroundTransparency = 0}).Completed:Wait()
 intro:Destroy()
 
--- Main hub prototype. Sections are containers for future universal modules.
-local UserInputService = game:GetService("UserInputService")
-local ice = Color3.fromRGB(115, 213, 255)
-local softText = Color3.fromRGB(173, 194, 215)
-local panel = Color3.fromRGB(10, 27, 49)
-local surface = Color3.fromRGB(17, 40, 68)
-local gold = Color3.fromRGB(255, 211, 143)
-local violet = Color3.fromRGB(178, 147, 255)
-local coral = Color3.fromRGB(255, 151, 157)
-local accent = ice
-local motion = true
-local selected = "Home"
-local query = ""
-local tabs = {"Home", "Game", "Combat", "Movement", "Visuals", "Configs", "More"}
-local descriptions = {
-    Game = "Game-specific scripts and automatic place detection.",
-    Combat = "A home for future combat tools and presets.",
-    Movement = "Movement modules, routes, and traversal tools.",
-    Visuals = "Visual modules and display controls.",
-}
-local ideas = {
-    Game = {"Game profiles", "Place-aware modules", "Quick launch"},
-    Combat = {"Aim tools", "Target information", "Combat presets"},
-    Movement = {"Speed controls", "Jump controls", "Traversal"},
-    Visuals = {"Player overlays", "World controls", "Display presets"},
-}
+-- Main hub: monochrome interface modeled on the supplied reference.
+local Stats = game:GetService("Stats")
+local ivory = Color3.fromRGB(247, 247, 247)
+local gray = Color3.fromRGB(171, 171, 171)
+local black = Color3.fromRGB(5, 5, 5)
+local charcoal = Color3.fromRGB(18, 18, 18)
 local modules = {Game = {}, Combat = {}, Movement = {}, Visuals = {}}
+local tabs = {"Home", "Game", "Combat", "Movement", "Visuals", "Configs", "More"}
+local tabIcons = {Home = "⌂", Game = "✣", Combat = "⚔", Movement = "➤", Visuals = "◉", Configs = "⚙", More = "•••"}
+local slotIdeas = {
+    Game = {"Game profiles", "Place detection", "Game scripts"},
+    Combat = {"Aim tools", "Target tools", "Combat presets"},
+    Movement = {"Speed", "Jump", "Traversal"},
+    Visuals = {"Player overlays", "World visuals", "Display presets"},
+}
+local tabDescriptions = {
+    Game = "Scripts for the game you are playing.",
+    Combat = "Combat modules will appear here.",
+    Movement = "Movement modules will appear here.",
+    Visuals = "Visual modules will appear here.",
+    Configs = "Tune the hub to your preference.",
+    More = "About Coco Hub and future additions.",
+}
+local activeTab = "Home"
+local motionEnabled = true
+local previewAssetId = 0 -- Set to a Roblox video asset ID when a preview is uploaded.
+local executorName = "Executor"
+for _, detector in ipairs({identifyexecutor, getexecutorname}) do
+    if type(detector) == "function" then
+        local ok, value = pcall(detector)
+        if ok and type(value) == "string" and #value > 0 then executorName = value; break end
+    end
+end
 
-local dimmer = make("Frame", {
+local function outline(parent, transparency, thickness)
+    return make("UIStroke", {Color = ivory, Transparency = transparency or 0.35, Thickness = thickness or 1.3}, parent)
+end
+local function text(parent, value, size, font, align, z)
+    return make("TextLabel", {
+        BackgroundTransparency = 1,
+        Text = value,
+        TextColor3 = ivory,
+        TextSize = size,
+        Font = font or Enum.Font.Gotham,
+        TextXAlignment = align or Enum.TextXAlignment.Center,
+        ZIndex = z or 6,
+    }, parent)
+end
+local function roundedButton(parent, value, size, z)
+    local button = make("TextButton", {
+        Size = size,
+        BackgroundColor3 = charcoal,
+        BackgroundTransparency = 0.1,
+        BorderSizePixel = 0,
+        Text = value,
+        TextColor3 = ivory,
+        TextSize = 23,
+        Font = Enum.Font.GothamMedium,
+        AutoButtonColor = false,
+        ZIndex = z or 7,
+    }, parent)
+    round(button, 12)
+    outline(button, 0.45, 1)
+    return button
+end
+
+local hub = make("Frame", {
+    Name = "MainHub",
     Size = UDim2.fromScale(1, 1),
-    BackgroundColor3 = Color3.fromRGB(1, 9, 20),
-    BackgroundTransparency = 0.42,
-    BorderSizePixel = 0,
-    ZIndex = 1,
-}, gui)
-local shadow = make("Frame", {
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(932, 572),
-    BackgroundColor3 = ice,
-    BackgroundTransparency = 0.89,
+    BackgroundColor3 = black,
     BorderSizePixel = 0,
     ZIndex = 2,
 }, gui)
-round(shadow, 28)
-local main = make("Frame", {
-    Name = "MainHub",
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(920, 560),
-    BackgroundColor3 = panel,
+local hubBackground = make("ImageLabel", {
+    Name = "MonochromeWaves",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    Image = assets.hubBackground.asset or "",
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 2,
+}, hub)
+local shade = make("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = black,
+    BackgroundTransparency = 0.7,
     BorderSizePixel = 0,
-    ClipsDescendants = true,
     ZIndex = 3,
-}, gui)
-round(main, 22)
-local mainStroke = make("UIStroke", {Color = ice, Thickness = 1.5, Transparency = 0.35}, main)
-make("UIGradient", {
-    Color = ColorSequence.new(Color3.fromRGB(13, 36, 65), Color3.fromRGB(7, 20, 39)),
-    Rotation = 90,
-}, main)
-local openingScale = make("UIScale", {Scale = 0.94}, main)
-
-local sidebar = make("Frame", {
-    Size = UDim2.new(0, 190, 1, 0),
-    BackgroundColor3 = Color3.fromRGB(10, 30, 56),
+}, hub)
+local rail = make("Frame", {
+    Name = "NavigationRail",
+    BackgroundColor3 = black,
+    BackgroundTransparency = 0.12,
     BorderSizePixel = 0,
     ZIndex = 4,
-}, main)
-make("UIGradient", {
-    Color = ColorSequence.new(Color3.fromRGB(16, 45, 78), Color3.fromRGB(7, 23, 46)),
-    Rotation = 90,
-}, sidebar)
-local brand = make("Frame", {
-    Position = UDim2.fromOffset(13, 13),
-    Size = UDim2.fromOffset(165, 70),
+}, hub)
+round(rail, 18)
+outline(rail, 0.8, 1)
+local railLogo = make("ImageLabel", {
     BackgroundTransparency = 1,
+    Image = assets.hubLogo.asset or "",
+    ScaleType = Enum.ScaleType.Fit,
     ZIndex = 5,
-}, sidebar)
-local brandLogo = make("ImageLabel", {
-    Position = UDim2.fromOffset(-12, -9),
-    Size = UDim2.fromOffset(94, 63),
-    BackgroundTransparency = 1,
-    Image = assets.logo.asset or "",
-    ZIndex = 5,
-}, brand)
-local brandFallback = make("TextLabel", {
-    Position = UDim2.fromOffset(7, 7),
-    Size = UDim2.fromOffset(42, 42),
-    BackgroundColor3 = Color3.fromRGB(168, 92, 35),
-    Text = "C",
-    TextColor3 = white,
-    TextSize = 28,
-    Font = Enum.Font.GothamBold,
-    Visible = not assets.logo.asset,
-    ZIndex = 5,
-}, brand)
-round(brandFallback, 24)
-make("TextLabel", {
-    Position = UDim2.fromOffset(58, 9),
-    Size = UDim2.fromOffset(104, 27),
-    BackgroundTransparency = 1,
-    Text = "COCO HUB",
-    TextColor3 = white,
-    TextSize = 18,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Font = Enum.Font.GothamBold,
-    ZIndex = 5,
-}, brand)
-make("TextLabel", {
-    Position = UDim2.fromOffset(59, 34),
-    Size = UDim2.fromOffset(105, 17),
-    BackgroundTransparency = 1,
-    Text = "UNIVERSAL HUB",
-    TextColor3 = softText,
-    TextSize = 10,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Font = Enum.Font.GothamMedium,
-    ZIndex = 5,
-}, brand)
-
+}, rail)
+local railFallback = text(rail, "◒", 42, Enum.Font.GothamBold, Enum.TextXAlignment.Center, 5)
+railFallback.Visible = not assets.hubLogo.asset
+local railTitle = text(rail, "COCO HUB", 23, Enum.Font.GothamBold, Enum.TextXAlignment.Center, 5)
+local railSubtitle = text(rail, "—  U N I V E R S A L   H U B  —", 10, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 5)
+railSubtitle.TextColor3 = gray
+local railLine = make("Frame", {BackgroundColor3 = ivory, BackgroundTransparency = 0.7, BorderSizePixel = 0, ZIndex = 5}, rail)
 local nav = make("ScrollingFrame", {
-    Name = "Navigation",
-    Position = UDim2.fromOffset(12, 102),
-    Size = UDim2.new(1, -24, 1, -120),
+    Name = "Sections",
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     ScrollBarThickness = 0,
-    ScrollingDirection = Enum.ScrollingDirection.Y,
-    CanvasSize = UDim2.fromOffset(0, 352),
+    CanvasSize = UDim2.fromOffset(0, 0),
     ZIndex = 5,
-}, sidebar)
+}, rail)
 local navLayout = make("UIListLayout", {
-    Padding = UDim.new(0, 6),
-    FillDirection = Enum.FillDirection.Vertical,
+    Padding = UDim.new(0, 7),
     SortOrder = Enum.SortOrder.LayoutOrder,
 }, nav)
 local navItems = {}
-local navCodes = {Home = "H", Game = "G", Combat = "C", Movement = "M", Visuals = "V", Configs = "S", More = "··"}
 for index, tab in ipairs(tabs) do
-    local item = make("TextButton", {
-        Name = tab,
-        Size = UDim2.new(1, -2, 0, 42),
-        BackgroundColor3 = ice,
+    local section = tab
+    local button = make("TextButton", {
+        Name = section,
+        BackgroundColor3 = ivory,
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         Text = "",
         LayoutOrder = index,
         AutoButtonColor = false,
-        ZIndex = 5,
+        ZIndex = 6,
     }, nav)
-    round(item, 11)
-    local mark = make("Frame", {
-        Position = UDim2.fromOffset(0, 7),
-        Size = UDim2.fromOffset(3, 28),
-        BackgroundColor3 = ice,
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ZIndex = 6,
-    }, item)
-    round(mark, 3)
-    local icon = make("TextLabel", {
-        Position = UDim2.fromOffset(10, 7),
-        Size = UDim2.fromOffset(28, 28),
-        BackgroundColor3 = Color3.fromRGB(31, 65, 95),
-        Text = navCodes[tab],
-        TextColor3 = white,
-        TextSize = 15,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 6,
-    }, item)
-    round(icon, 9)
-    local name = make("TextLabel", {
-        Position = UDim2.fromOffset(47, 0),
-        Size = UDim2.new(1, -50, 1, 0),
-        BackgroundTransparency = 1,
-        Text = tab,
-        TextColor3 = softText,
-        TextSize = 16,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamMedium,
-        ZIndex = 6,
-    }, item)
-    navItems[tab] = {button = item, mark = mark, icon = icon, name = name}
+    round(button, 20)
+    local edge = outline(button, 1, 1)
+    local icon = text(button, tabIcons[section], 23, Enum.Font.GothamBold, Enum.TextXAlignment.Center, 7)
+    local label = text(button, section, 18, Enum.Font.GothamMedium, Enum.TextXAlignment.Left, 7)
+    navItems[section] = {button = button, edge = edge, icon = icon, label = label}
 end
-local sidebarFoot = make("TextLabel", {
-    AnchorPoint = Vector2.new(0, 1),
-    Position = UDim2.new(0, 20, 1, -15),
-    Size = UDim2.new(1, -32, 0, 20),
-    BackgroundTransparency = 1,
-    Text = "DRAFT  •  CHRISTMAS EDITION",
-    TextColor3 = softText,
-    TextTransparency = 0.35,
-    TextSize = 10,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Font = Enum.Font.GothamMedium,
-    ZIndex = 5,
-}, sidebar)
 
-local content = make("Frame", {
-    Position = UDim2.fromOffset(190, 0),
-    Size = UDim2.new(1, -190, 1, 0),
-    BackgroundTransparency = 1,
-    ZIndex = 4,
-}, main)
-local header = make("Frame", {
-    Size = UDim2.new(1, 0, 0, 76),
-    BackgroundTransparency = 1,
-    ZIndex = 5,
-}, content)
-local headerTitle = make("TextLabel", {
-    Position = UDim2.fromOffset(22, 13),
-    Size = UDim2.new(1, -86, 0, 32),
-    BackgroundTransparency = 1,
-    Text = "Home",
-    TextColor3 = white,
-    TextSize = 26,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Font = Enum.Font.GothamBold,
-    ZIndex = 6,
-}, header)
-local headerSub = make("TextLabel", {
-    Position = UDim2.fromOffset(23, 45),
-    Size = UDim2.new(1, -86, 0, 20),
-    BackgroundTransparency = 1,
-    Text = "Everything in one place.",
-    TextColor3 = softText,
-    TextSize = 13,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Font = Enum.Font.Gotham,
-    ZIndex = 6,
-}, header)
-local search = make("TextBox", {
-    AnchorPoint = Vector2.new(1, 0),
-    Position = UDim2.new(1, -60, 0, 21),
-    Size = UDim2.fromOffset(190, 38),
-    BackgroundColor3 = Color3.fromRGB(20, 45, 72),
-    BorderSizePixel = 0,
-    Text = "",
-    PlaceholderText = "Search modules...",
-    PlaceholderColor3 = softText,
-    TextColor3 = white,
-    TextSize = 14,
-    ClearTextOnFocus = false,
-    Font = Enum.Font.Gotham,
-    ZIndex = 6,
-}, header)
-round(search, 13)
-make("UIStroke", {Color = ice, Thickness = 1, Transparency = 0.66}, search)
-make("UIPadding", {PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 10)}, search)
-local close = make("TextButton", {
-    AnchorPoint = Vector2.new(1, 0),
-    Position = UDim2.new(1, -16, 0, 21),
-    Size = UDim2.fromOffset(34, 38),
-    BackgroundColor3 = Color3.fromRGB(29, 55, 82),
-    BorderSizePixel = 0,
-    Text = "×",
-    TextColor3 = white,
-    TextSize = 22,
-    Font = Enum.Font.GothamMedium,
-    ZIndex = 6,
-}, header)
-round(close, 12)
+local minimize = roundedButton(hub, "−", UDim2.fromOffset(44, 44), 12)
+local close = roundedButton(hub, "×", UDim2.fromOffset(44, 44), 12)
+local bubble = roundedButton(gui, "◒", UDim2.fromOffset(54, 54), 15)
+bubble.Name = "ReopenCocoHub"
+bubble.Visible = false
+bubble.AnchorPoint = Vector2.new(1, 1)
+bubble.Position = UDim2.new(1, -18, 1, -18)
 
-local page = make("ScrollingFrame", {
-    Name = "Page",
-    Position = UDim2.fromOffset(20, 78),
-    Size = UDim2.new(1, -40, 1, -96),
+local home = make("ScrollingFrame", {
+    Name = "HomePage",
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 0,
+    CanvasSize = UDim2.fromOffset(0, 0),
+    ZIndex = 5,
+}, hub)
+local previewGlow = make("Frame", {BackgroundColor3 = ivory, BackgroundTransparency = 0.9, BorderSizePixel = 0, ZIndex = 5}, home)
+round(previewGlow, 22)
+local preview = make("Frame", {
+    Name = "VideoPreview",
+    BackgroundColor3 = Color3.fromRGB(13, 13, 13),
+    BackgroundTransparency = 0.08,
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+    ZIndex = 6,
+}, home)
+round(preview, 20)
+outline(preview, 0.05, 1.7)
+make("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(24, 24, 24), Color3.fromRGB(8, 8, 8)), Rotation = 90}, preview)
+local previewVideo = make("VideoFrame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    Visible = false,
+    Looped = false,
+    Volume = 0.75,
+    ZIndex = 7,
+}, preview)
+local previewButton = roundedButton(preview, "▶", UDim2.fromOffset(78, 62), 8)
+previewButton.AnchorPoint = Vector2.new(0.5, 0.5)
+previewButton.Position = UDim2.fromScale(0.5, 0.47)
+previewButton.TextSize = 28
+local previewLabel = text(preview, "Video Preview", 18, Enum.Font.Gotham, Enum.TextXAlignment.Center, 8)
+previewLabel.TextColor3 = gray
+previewLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+previewLabel.Position = UDim2.fromScale(0.5, 0.7)
+previewLabel.Size = UDim2.new(0.8, 0, 0, 27)
+
+local brand = make("Frame", {BackgroundTransparency = 1, ZIndex = 5}, home)
+local bigLogo = make("ImageLabel", {
+    BackgroundTransparency = 1,
+    Image = assets.hubLogo.asset or "",
+    ScaleType = Enum.ScaleType.Fit,
+    ZIndex = 6,
+}, brand)
+local bigFallback = text(brand, "◒", 90, Enum.Font.GothamBold, Enum.TextXAlignment.Center, 6)
+bigFallback.Visible = not assets.hubLogo.asset
+local bigTitle = text(brand, "COCO HUB", 58, Enum.Font.GothamBlack, Enum.TextXAlignment.Center, 6)
+bigTitle.TextScaled = true
+make("UITextSizeConstraint", {MaxTextSize = 68}, bigTitle)
+local bigSubtitle = text(brand, "—   U N I V E R S A L   S C R I P T   H U B   —", 15, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 6)
+bigSubtitle.TextColor3 = gray
+bigSubtitle.TextScaled = true
+make("UITextSizeConstraint", {MaxTextSize = 17}, bigSubtitle)
+
+local info = make("Frame", {
+    Name = "IdentityStrip",
+    BackgroundColor3 = Color3.fromRGB(10, 10, 10),
+    BackgroundTransparency = 0.17,
+    BorderSizePixel = 0,
+    ZIndex = 6,
+}, home)
+round(info, 19)
+outline(info, 0.25, 1.2)
+local profile = make("Frame", {BackgroundTransparency = 1, ZIndex = 7}, info)
+local avatar = make("ImageLabel", {
+    BackgroundColor3 = Color3.fromRGB(43, 43, 43),
+    BorderSizePixel = 0,
+    Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(player.UserId) .. "&w=150&h=150",
+    ZIndex = 8,
+}, profile)
+round(avatar, 11)
+local playerName = text(profile, player.DisplayName, 19, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 8)
+playerName.TextTruncate = Enum.TextTruncate.AtEnd
+local playerId = text(profile, "ID: " .. tostring(player.UserId), 14, Enum.Font.Gotham, Enum.TextXAlignment.Left, 8)
+playerId.TextColor3 = gray
+local executorPanel = make("Frame", {BackgroundTransparency = 1, ZIndex = 7}, info)
+local executorIcon = text(executorPanel, "△", 46, Enum.Font.GothamBold, Enum.TextXAlignment.Center, 8)
+local executorText = text(executorPanel, executorName, 19, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 8)
+executorText.TextTruncate = Enum.TextTruncate.AtEnd
+local executorSub = text(executorPanel, "Executor", 14, Enum.Font.Gotham, Enum.TextXAlignment.Left, 8)
+executorSub.TextColor3 = gray
+local gamePanel = make("Frame", {BackgroundTransparency = 1, ZIndex = 7}, info)
+local gameIcon = make("ImageLabel", {
+    BackgroundColor3 = Color3.fromRGB(44, 44, 44),
+    BorderSizePixel = 0,
+    Image = "rbxthumb://type=GameIcon&id=" .. tostring(game.GameId) .. "&w=150&h=150",
+    ZIndex = 8,
+}, gamePanel)
+round(gameIcon, 11)
+local gameName = text(gamePanel, game.Name, 18, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 8)
+gameName.TextTruncate = Enum.TextTruncate.AtEnd
+local gameSub = text(gamePanel, "Playing on Roblox", 14, Enum.Font.Gotham, Enum.TextXAlignment.Left, 8)
+gameSub.TextColor3 = gray
+local separator1 = make("Frame", {BackgroundColor3 = ivory, BackgroundTransparency = 0.65, BorderSizePixel = 0, ZIndex = 8}, info)
+local separator2 = make("Frame", {BackgroundColor3 = ivory, BackgroundTransparency = 0.65, BorderSizePixel = 0, ZIndex = 8}, info)
+
+local performance = make("Frame", {BackgroundTransparency = 1, ZIndex = 5}, home)
+local fpsPill = make("Frame", {BackgroundColor3 = charcoal, BackgroundTransparency = 0.08, BorderSizePixel = 0, ZIndex = 6}, performance)
+round(fpsPill, 30)
+outline(fpsPill, 0.18, 1.2)
+local fpsText = text(fpsPill, "FPS  --", 22, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 7)
+local pingPill = make("Frame", {BackgroundColor3 = charcoal, BackgroundTransparency = 0.08, BorderSizePixel = 0, ZIndex = 6}, performance)
+round(pingPill, 30)
+outline(pingPill, 0.18, 1.2)
+local pingText = text(pingPill, "Ping  --", 22, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 7)
+
+local sectionHeader = make("Frame", {BackgroundTransparency = 1, Visible = false, ZIndex = 5}, hub)
+local sectionTitle = text(sectionHeader, "", 34, Enum.Font.GothamBlack, Enum.TextXAlignment.Left, 6)
+local sectionSubtitle = text(sectionHeader, "", 16, Enum.Font.Gotham, Enum.TextXAlignment.Left, 6)
+sectionSubtitle.TextColor3 = gray
+local sections = make("ScrollingFrame", {
+    Name = "SectionPage",
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     ScrollBarThickness = 3,
-    ScrollBarImageColor3 = ice,
+    ScrollBarImageColor3 = gray,
     CanvasSize = UDim2.fromOffset(0, 0),
-    ScrollingDirection = Enum.ScrollingDirection.Y,
+    Visible = false,
     ZIndex = 5,
-}, content)
-local pageLayout = make("UIListLayout", {
-    Padding = UDim.new(0, 11),
+}, hub)
+local sectionLayout = make("UIListLayout", {
+    Padding = UDim.new(0, 13),
     SortOrder = Enum.SortOrder.LayoutOrder,
-}, page)
-pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    page.CanvasSize = UDim2.fromOffset(0, pageLayout.AbsoluteContentSize.Y + 18)
+}, sections)
+sectionLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    sections.CanvasSize = UDim2.fromOffset(0, sectionLayout.AbsoluteContentSize.Y + 20)
 end)
 
-local toast = make("TextLabel", {
-    AnchorPoint = Vector2.new(0.5, 1),
-    Position = UDim2.new(0.5, 0, 1, -20),
-    Size = UDim2.fromOffset(300, 40),
-    BackgroundColor3 = Color3.fromRGB(32, 68, 98),
-    BackgroundTransparency = 1,
-    Text = "",
-    TextColor3 = white,
-    TextTransparency = 1,
-    TextSize = 14,
-    Font = Enum.Font.GothamMedium,
-    Visible = false,
-    ZIndex = 15,
-}, main)
+local toast = text(hub, "", 14, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 20)
+toast.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+toast.BackgroundTransparency = 1
+toast.TextTransparency = 1
+toast.Visible = false
 round(toast, 12)
+outline(toast, 0.3, 1)
 local toastSerial = 0
 local function notify(message)
     toastSerial = toastSerial + 1
@@ -649,631 +638,404 @@ local function notify(message)
     toast.Text = message
     toast.Visible = true
     animate(toast, 0.2, {BackgroundTransparency = 0.08, TextTransparency = 0})
-    task.delay(2.5, function()
+    task.delay(2.3, function()
         if id ~= toastSerial or not toast.Parent then return end
         animate(toast, 0.25, {BackgroundTransparency = 1, TextTransparency = 1}).Completed:Wait()
         if id == toastSerial then toast.Visible = false end
     end)
 end
 
-local bubble = make("TextButton", {
-    Name = "ReopenHub",
-    AnchorPoint = Vector2.new(1, 1),
-    Position = UDim2.new(1, -22, 1, -22),
-    Size = UDim2.fromOffset(54, 54),
-    BackgroundColor3 = panel,
-    BorderSizePixel = 0,
-    Text = "C",
-    TextColor3 = white,
-    TextSize = 28,
-    Font = Enum.Font.GothamBold,
-    Visible = false,
-    ZIndex = 17,
-}, gui)
-round(bubble, 28)
-make("UIStroke", {Color = ice, Thickness = 2}, bubble)
-
-local function label(parent, textValue, size, color, font, height)
-    return make("TextLabel", {
-        Size = UDim2.new(1, 0, 0, height),
-        BackgroundTransparency = 1,
-        Text = textValue,
-        TextColor3 = color or white,
-        TextSize = size,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextWrapped = true,
-        Font = font or Enum.Font.Gotham,
-        ZIndex = 7,
-    }, parent)
+local function viewSize()
+    return camera and camera.ViewportSize or Vector2.new(1280, 720)
 end
-local layoutIndex = 0
-local function card(height, tint)
-    layoutIndex = layoutIndex + 1
-    local frame = make("Frame", {
-        Size = UDim2.new(1, -5, 0, height),
-        BackgroundColor3 = tint or surface,
-        BorderSizePixel = 0,
-        ClipsDescendants = true,
-        LayoutOrder = layoutIndex,
-        ZIndex = 6,
-    }, page)
-    round(frame, 18)
-    make("UIStroke", {Color = accent, Thickness = 1, Transparency = 0.7}, frame)
-    return frame
-end
-local function clearPage()
-    layoutIndex = 0
-    for _, child in ipairs(page:GetChildren()) do
-        if child ~= pageLayout then child:Destroy() end
+local function layout()
+    local view = viewSize()
+    local w, h = view.X, view.Y
+    local portrait = w < h
+    local railWidth = math.max(150, math.min(230, math.floor(w * 0.18)))
+    if portrait then
+        rail.Position = UDim2.fromOffset(6, 5)
+        rail.Size = UDim2.new(1, -12, 0, 105)
+        railLogo.Position = UDim2.fromOffset(12, 4)
+        railLogo.Size = UDim2.fromOffset(65, 50)
+        railFallback.Position = railLogo.Position
+        railFallback.Size = railLogo.Size
+        railTitle.Position = UDim2.fromOffset(76, 10)
+        railTitle.Size = UDim2.fromOffset(155, 26)
+        railTitle.TextXAlignment = Enum.TextXAlignment.Left
+        railTitle.TextSize = 19
+        railSubtitle.Visible = false
+        railLine.Visible = false
+        nav.Position = UDim2.fromOffset(9, 59)
+        nav.Size = UDim2.new(1, -18, 0, 42)
+        nav.ScrollingDirection = Enum.ScrollingDirection.X
+        nav.CanvasSize = UDim2.fromOffset(#tabs * 108, 0)
+        navLayout.FillDirection = Enum.FillDirection.Horizontal
+        for _, item in pairs(navItems) do
+            item.button.Size = UDim2.fromOffset(101, 37)
+            item.icon.Position = UDim2.fromOffset(8, 2)
+            item.icon.Size = UDim2.fromOffset(27, 33)
+            item.icon.TextSize = 19
+            item.label.Position = UDim2.fromOffset(38, 2)
+            item.label.Size = UDim2.fromOffset(60, 33)
+            item.label.TextSize = 13
+        end
+        minimize.Position = UDim2.new(1, -90, 0, 9)
+        close.Position = UDim2.new(1, -48, 0, 9)
+        minimize.Size = UDim2.fromOffset(35, 35)
+        close.Size = UDim2.fromOffset(35, 35)
+        home.Position = UDim2.fromOffset(0, 110)
+        home.Size = UDim2.new(1, 0, 1, -110)
+        local area = w - 32
+        local previewHeight = math.min(190, math.max(150, math.floor(h * 0.22)))
+        preview.Position = UDim2.fromOffset(16, 18)
+        preview.Size = UDim2.fromOffset(area, previewHeight)
+        previewGlow.Position = UDim2.fromOffset(13, 15)
+        previewGlow.Size = UDim2.fromOffset(area + 6, previewHeight + 6)
+        previewButton.Size = UDim2.fromOffset(64, 50)
+        brand.Position = UDim2.fromOffset(16, 18 + previewHeight + 14)
+        brand.Size = UDim2.fromOffset(area, 158)
+        bigLogo.Position = UDim2.new(0.5, -55, 0, 0)
+        bigLogo.Size = UDim2.fromOffset(110, 95)
+        bigFallback.Position = bigLogo.Position
+        bigFallback.Size = bigLogo.Size
+        bigTitle.Position = UDim2.new(0, 0, 0, 95)
+        bigTitle.Size = UDim2.new(1, 0, 0, 42)
+        bigSubtitle.Position = UDim2.new(0, 0, 0, 137)
+        bigSubtitle.Size = UDim2.new(1, 0, 0, 18)
+        local infoY = 18 + previewHeight + 186
+        info.Position = UDim2.fromOffset(16, infoY)
+        info.Size = UDim2.fromOffset(area, 174)
+        local rowW = area - 24
+        profile.Position = UDim2.fromOffset(12, 10)
+        profile.Size = UDim2.fromOffset(rowW, 49)
+        executorPanel.Position = UDim2.fromOffset(12, 62)
+        executorPanel.Size = UDim2.fromOffset(rowW, 49)
+        gamePanel.Position = UDim2.fromOffset(12, 114)
+        gamePanel.Size = UDim2.fromOffset(rowW, 49)
+        separator1.Position = UDim2.fromOffset(12, 59)
+        separator1.Size = UDim2.fromOffset(rowW, 1)
+        separator2.Position = UDim2.fromOffset(12, 111)
+        separator2.Size = UDim2.fromOffset(rowW, 1)
+        for _, thumbnail in ipairs({avatar, gameIcon}) do thumbnail.Position = UDim2.fromOffset(0, 2); thumbnail.Size = UDim2.fromOffset(44, 44) end
+        playerName.Position = UDim2.fromOffset(54, 2); playerName.Size = UDim2.new(1, -60, 0, 24)
+        playerId.Position = UDim2.fromOffset(54, 26); playerId.Size = UDim2.new(1, -60, 0, 19)
+        executorIcon.Position = UDim2.fromOffset(0, 0); executorIcon.Size = UDim2.fromOffset(44, 46)
+        executorText.Position = UDim2.fromOffset(54, 2); executorText.Size = UDim2.new(1, -60, 0, 24)
+        executorSub.Position = UDim2.fromOffset(54, 26); executorSub.Size = UDim2.new(1, -60, 0, 19)
+        gameName.Position = UDim2.fromOffset(54, 2); gameName.Size = UDim2.new(1, -60, 0, 24)
+        gameSub.Position = UDim2.fromOffset(54, 26); gameSub.Size = UDim2.new(1, -60, 0, 19)
+        performance.Position = UDim2.fromOffset(16, infoY + 191)
+        performance.Size = UDim2.fromOffset(area, 54)
+        local pillWidth = math.floor((area - 10) / 2)
+        fpsPill.Position = UDim2.fromOffset(0, 0); fpsPill.Size = UDim2.fromOffset(pillWidth, 50)
+        pingPill.Position = UDim2.fromOffset(pillWidth + 10, 0); pingPill.Size = UDim2.fromOffset(pillWidth, 50)
+        home.CanvasSize = UDim2.fromOffset(0, infoY + 260)
+        sectionHeader.Position = UDim2.fromOffset(18, 121)
+        sectionHeader.Size = UDim2.new(1, -36, 0, 76)
+        sections.Position = UDim2.fromOffset(16, 201)
+        sections.Size = UDim2.new(1, -32, 1, -212)
+    else
+        rail.Position = UDim2.fromOffset(6, 5)
+        rail.Size = UDim2.fromOffset(railWidth, h - 10)
+        local brandHeight = math.min(160, math.max(93, math.floor(h * 0.23)))
+        railLogo.Position = UDim2.fromOffset(math.floor((railWidth - 90) / 2), 9)
+        railLogo.Size = UDim2.fromOffset(90, math.floor(brandHeight * 0.49))
+        railFallback.Position = railLogo.Position
+        railFallback.Size = railLogo.Size
+        railTitle.Position = UDim2.fromOffset(8, math.floor(brandHeight * 0.53))
+        railTitle.Size = UDim2.fromOffset(railWidth - 16, 34)
+        railTitle.TextXAlignment = Enum.TextXAlignment.Center
+        railTitle.TextSize = math.min(24, math.max(18, math.floor(h * 0.035)))
+        railSubtitle.Visible = true
+        railSubtitle.Position = UDim2.fromOffset(6, math.floor(brandHeight * 0.53) + 37)
+        railSubtitle.Size = UDim2.fromOffset(railWidth - 12, 15)
+        railLine.Visible = true
+        railLine.Position = UDim2.fromOffset(20, brandHeight)
+        railLine.Size = UDim2.fromOffset(railWidth - 40, 1)
+        nav.Position = UDim2.fromOffset(9, brandHeight + 17)
+        nav.Size = UDim2.new(1, -18, 1, -(brandHeight + 28))
+        nav.ScrollingDirection = Enum.ScrollingDirection.Y
+        navLayout.FillDirection = Enum.FillDirection.Vertical
+        local navHeight = math.min(49, math.max(34, math.floor((h - brandHeight - 55) / 7)))
+        nav.CanvasSize = UDim2.fromOffset(0, #tabs * (navHeight + 7))
+        for _, item in pairs(navItems) do
+            item.button.Size = UDim2.new(1, -2, 0, navHeight)
+            item.icon.Position = UDim2.fromOffset(12, 0)
+            item.icon.Size = UDim2.fromOffset(29, navHeight)
+            item.icon.TextSize = math.min(23, navHeight - 9)
+            item.label.Position = UDim2.fromOffset(50, 0)
+            item.label.Size = UDim2.new(1, -55, 1, 0)
+            item.label.TextSize = math.min(18, math.max(13, math.floor(navHeight * 0.4)))
+        end
+        minimize.Position = UDim2.new(1, -104, 0, 14)
+        close.Position = UDim2.new(1, -52, 0, 14)
+        minimize.Size = UDim2.fromOffset(42, 42)
+        close.Size = UDim2.fromOffset(42, 42)
+        local left = railWidth + 36
+        local area = w - left - 28
+        home.Position = UDim2.fromOffset(left, 0)
+        home.Size = UDim2.fromOffset(area, h)
+        local top = math.floor(h * 0.16)
+        local upper = math.floor(h * 0.39)
+        local gap = math.max(16, math.floor(area * 0.025))
+        local previewWidth = math.floor((area - gap) * 0.48)
+        preview.Position = UDim2.fromOffset(0, top)
+        preview.Size = UDim2.fromOffset(previewWidth, upper)
+        previewGlow.Position = UDim2.fromOffset(-3, top - 3)
+        previewGlow.Size = UDim2.fromOffset(previewWidth + 6, upper + 6)
+        previewButton.Size = UDim2.fromOffset(math.min(78, math.floor(upper * 0.3)), math.min(62, math.floor(upper * 0.25)))
+        brand.Position = UDim2.fromOffset(previewWidth + gap, top - 45)
+        brand.Size = UDim2.fromOffset(area - previewWidth - gap, upper + 45)
+        local logoHeight = math.floor(brand.AbsoluteSize.Y * 0.53)
+        if logoHeight == 0 then logoHeight = math.floor((upper + 45) * 0.53) end
+        bigLogo.Position = UDim2.new(0.5, -logoHeight * 0.58, 0, 0)
+        bigLogo.Size = UDim2.fromOffset(math.floor(logoHeight * 1.16), logoHeight)
+        bigFallback.Position = bigLogo.Position
+        bigFallback.Size = bigLogo.Size
+        bigTitle.Position = UDim2.new(0, 0, 0, logoHeight)
+        bigTitle.Size = UDim2.new(1, 0, 0, math.floor(upper * 0.28))
+        bigSubtitle.Position = UDim2.new(0, 0, 0, logoHeight + math.floor(upper * 0.28))
+        bigSubtitle.Size = UDim2.new(1, 0, 0, 24)
+        local infoY = top + upper + math.max(18, math.floor(h * 0.04))
+        local infoHeight = math.max(66, math.min(98, math.floor(h * 0.135)))
+        info.Position = UDim2.fromOffset(0, infoY)
+        info.Size = UDim2.fromOffset(area, infoHeight)
+        local profileWidth = math.floor(area * 0.36)
+        local executorWidth = math.floor(area * 0.22)
+        profile.Position = UDim2.fromOffset(11, 0)
+        profile.Size = UDim2.fromOffset(profileWidth - 17, infoHeight)
+        executorPanel.Position = UDim2.fromOffset(profileWidth + 9, 0)
+        executorPanel.Size = UDim2.fromOffset(executorWidth - 15, infoHeight)
+        gamePanel.Position = UDim2.fromOffset(profileWidth + executorWidth + 9, 0)
+        gamePanel.Size = UDim2.fromOffset(area - profileWidth - executorWidth - 20, infoHeight)
+        separator1.Position = UDim2.fromOffset(profileWidth, 19)
+        separator1.Size = UDim2.fromOffset(1, infoHeight - 38)
+        separator2.Position = UDim2.fromOffset(profileWidth + executorWidth, 19)
+        separator2.Size = UDim2.fromOffset(1, infoHeight - 38)
+        local iconSize = math.min(68, infoHeight - 17)
+        avatar.Position = UDim2.fromOffset(5, math.floor((infoHeight - iconSize) / 2))
+        avatar.Size = UDim2.fromOffset(iconSize, iconSize)
+        gameIcon.Position = UDim2.fromOffset(5, math.floor((infoHeight - iconSize) / 2))
+        gameIcon.Size = UDim2.fromOffset(iconSize, iconSize)
+        playerName.Position = UDim2.fromOffset(iconSize + 15, math.floor(infoHeight * 0.23))
+        playerName.Size = UDim2.new(1, -(iconSize + 18), 0, 25)
+        playerId.Position = UDim2.fromOffset(iconSize + 15, math.floor(infoHeight * 0.55))
+        playerId.Size = UDim2.new(1, -(iconSize + 18), 0, 20)
+        executorIcon.Position = UDim2.fromOffset(3, math.floor((infoHeight - 52) / 2))
+        executorIcon.Size = UDim2.fromOffset(50, 52)
+        executorText.Position = UDim2.fromOffset(56, math.floor(infoHeight * 0.23))
+        executorText.Size = UDim2.new(1, -60, 0, 25)
+        executorSub.Position = UDim2.fromOffset(56, math.floor(infoHeight * 0.55))
+        executorSub.Size = UDim2.new(1, -60, 0, 20)
+        gameName.Position = UDim2.fromOffset(iconSize + 15, math.floor(infoHeight * 0.23))
+        gameName.Size = UDim2.new(1, -(iconSize + 18), 0, 25)
+        gameSub.Position = UDim2.fromOffset(iconSize + 15, math.floor(infoHeight * 0.55))
+        gameSub.Size = UDim2.new(1, -(iconSize + 18), 0, 20)
+        performance.Position = UDim2.fromOffset(math.max(0, math.floor((area - 610) / 2)), infoY + infoHeight + 26)
+        performance.Size = UDim2.fromOffset(math.min(610, area), 68)
+        local pillWidth = math.floor((performance.Size.X.Offset - 24) / 2)
+        fpsPill.Position = UDim2.fromOffset(0, 0)
+        fpsPill.Size = UDim2.fromOffset(pillWidth, 62)
+        pingPill.Position = UDim2.fromOffset(pillWidth + 24, 0)
+        pingPill.Size = UDim2.fromOffset(pillWidth, 62)
+        home.CanvasSize = UDim2.fromOffset(0, math.max(h, infoY + infoHeight + 115))
+        sectionHeader.Position = UDim2.fromOffset(left, math.max(75, math.floor(h * 0.13)))
+        sectionHeader.Size = UDim2.fromOffset(area, 84)
+        sections.Position = UDim2.fromOffset(left, math.max(168, math.floor(h * 0.25)))
+        sections.Size = UDim2.fromOffset(area, h - sections.Position.Y.Offset - 24)
     end
-    page.CanvasPosition = Vector2.new(0, 0)
-end
-local function pill(parent, textValue, x, y, width, tint)
-    local tag = make("TextLabel", {
-        Position = UDim2.fromOffset(x, y),
-        Size = UDim2.fromOffset(width, 25),
-        BackgroundColor3 = tint or Color3.fromRGB(31, 69, 100),
-        Text = textValue,
-        TextColor3 = white,
-        TextSize = 11,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 8,
-    }, parent)
-    round(tag, 13)
-    return tag
-end
-local function emptyCard(titleText, descriptionText)
-    local frame = card(102)
-    local circle = make("TextLabel", {
-        Position = UDim2.fromOffset(17, 24),
-        Size = UDim2.fromOffset(50, 50),
-        BackgroundColor3 = Color3.fromRGB(33, 75, 109),
-        Text = "+",
-        TextColor3 = accent,
-        TextSize = 30,
-        Font = Enum.Font.GothamMedium,
-        ZIndex = 7,
-    }, frame)
-    round(circle, 16)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(82, 19),
-        Size = UDim2.new(1, -100, 0, 30),
-        BackgroundTransparency = 1,
-        Text = titleText,
-        TextColor3 = white,
-        TextSize = 18,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 7,
-    }, frame)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(82, 53),
-        Size = UDim2.new(1, -100, 0, 32),
-        BackgroundTransparency = 1,
-        Text = descriptionText,
-        TextColor3 = softText,
-        TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextWrapped = true,
-        Font = Enum.Font.Gotham,
-        ZIndex = 7,
-    }, frame)
-    return frame
+    previewLabel.Visible = true
+    fpsText.Size = UDim2.fromScale(1, 1)
+    pingText.Size = UDim2.fromScale(1, 1)
+    sectionTitle.Position = UDim2.fromOffset(0, 0)
+    sectionTitle.Size = UDim2.new(1, 0, 0, 46)
+    sectionSubtitle.Position = UDim2.fromOffset(1, 48)
+    sectionSubtitle.Size = UDim2.new(1, -2, 0, 27)
+    toast.AnchorPoint = Vector2.new(0.5, 1)
+    toast.Position = UDim2.new(0.5, 0, 1, -22)
+    toast.Size = UDim2.fromOffset(math.min(400, w - 30), 42)
 end
 
+local sectionOrder = 0
+local function clearSection()
+    for _, child in ipairs(sections:GetChildren()) do if child ~= sectionLayout then child:Destroy() end end
+    sectionOrder = 0
+    sections.CanvasPosition = Vector2.new(0, 0)
+end
+local function sectionCard(height)
+    sectionOrder = sectionOrder + 1
+    local card = make("Frame", {
+        Size = UDim2.new(1, -8, 0, height),
+        BackgroundColor3 = Color3.fromRGB(15, 15, 15),
+        BackgroundTransparency = 0.1,
+        BorderSizePixel = 0,
+        LayoutOrder = sectionOrder,
+        ZIndex = 6,
+    }, sections)
+    round(card, 18)
+    outline(card, 0.42, 1)
+    return card
+end
+local function slotCard(titleValue, detail)
+    local card = sectionCard(95)
+    local icon = text(card, "+", 29, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 7)
+    icon.Position = UDim2.fromOffset(16, 20)
+    icon.Size = UDim2.fromOffset(52, 52)
+    icon.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    round(icon, 15)
+    outline(icon, 0.6, 1)
+    local name = text(card, titleValue, 19, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
+    name.Position = UDim2.fromOffset(82, 19)
+    name.Size = UDim2.new(1, -98, 0, 28)
+    local sub = text(card, detail, 13, Enum.Font.Gotham, Enum.TextXAlignment.Left, 7)
+    sub.TextColor3 = gray
+    sub.Position = UDim2.fromOffset(83, 53)
+    sub.Size = UDim2.new(1, -100, 0, 24)
+    sub.TextWrapped = true
+end
 local function moduleCard(module)
-    local frame = card(112)
-    pill(frame, "MODULE", 16, 15, 72)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(17, 44),
-        Size = UDim2.new(1, -136, 0, 27),
-        BackgroundTransparency = 1,
-        Text = module.title,
-        TextColor3 = white,
-        TextSize = 18,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 7,
-    }, frame)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(17, 73),
-        Size = UDim2.new(1, -136, 0, 27),
-        BackgroundTransparency = 1,
-        Text = module.description or "",
-        TextColor3 = softText,
-        TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextWrapped = true,
-        Font = Enum.Font.Gotham,
-        ZIndex = 7,
-    }, frame)
-    local run = make("TextButton", {
-        AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -16, 0.5, 0),
-        Size = UDim2.fromOffset(88, 34),
-        BackgroundColor3 = accent,
-        Text = "Run",
-        TextColor3 = night,
-        TextSize = 14,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 8,
-    }, frame)
-    round(run, 12)
+    local card = sectionCard(105)
+    local name = text(card, module.title, 20, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
+    name.Position = UDim2.fromOffset(18, 17)
+    name.Size = UDim2.new(1, -135, 0, 32)
+    local detail = text(card, module.description or "", 13, Enum.Font.Gotham, Enum.TextXAlignment.Left, 7)
+    detail.TextColor3 = gray
+    detail.Position = UDim2.fromOffset(19, 55)
+    detail.Size = UDim2.new(1, -138, 0, 34)
+    detail.TextWrapped = true
+    local run = roundedButton(card, "RUN", UDim2.fromOffset(90, 39), 8)
+    run.AnchorPoint = Vector2.new(1, 0.5)
+    run.Position = UDim2.new(1, -17, 0.5, 0)
+    run.TextSize = 14
     run.MouseButton1Click:Connect(function()
         local ok, err = pcall(module.run)
         notify(ok and (module.title .. " launched") or ("Module error: " .. tostring(err)))
     end)
 end
-
-local renderPage
-local selectTab
-local function renderHome()
-    local hero = card(185, Color3.fromRGB(19, 52, 86))
-    make("UIGradient", {
-        Color = ColorSequence.new(Color3.fromRGB(25, 69, 105), Color3.fromRGB(13, 34, 65)),
-    }, hero)
-    for i = 1, 3 do
-        local ring = make("Frame", {
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(1, -35, 0, 100),
-            Size = UDim2.fromOffset(110 + i * 43, 110 + i * 43),
-            BackgroundTransparency = 1,
-            ZIndex = 7,
-        }, hero)
-        round(ring, 200)
-        make("UIStroke", {Color = accent, Thickness = 1, Transparency = 0.72 + i * 0.07}, ring)
+local renderSection
+local function settingCard(nameValue, detail, value, action)
+    local card = sectionCard(92)
+    local name = text(card, nameValue, 19, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
+    name.Position = UDim2.fromOffset(18, 17)
+    name.Size = UDim2.new(1, -145, 0, 27)
+    local sub = text(card, detail, 13, Enum.Font.Gotham, Enum.TextXAlignment.Left, 7)
+    sub.TextColor3 = gray
+    sub.Position = UDim2.fromOffset(18, 51)
+    sub.Size = UDim2.new(1, -145, 0, 28)
+    local button = roundedButton(card, value, UDim2.fromOffset(102, 36), 8)
+    button.AnchorPoint = Vector2.new(1, 0.5)
+    button.Position = UDim2.new(1, -18, 0.5, 0)
+    button.TextSize = 13
+    button.MouseButton1Click:Connect(action)
+    return button
+end
+renderSection = function()
+    clearSection()
+    sectionTitle.Text = string.upper(activeTab)
+    sectionSubtitle.Text = tabDescriptions[activeTab] or ""
+    if activeTab == "Game" then
+        local card = sectionCard(105)
+        local name = text(card, game.Name, 21, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
+        name.Position = UDim2.fromOffset(18, 16)
+        name.Size = UDim2.new(1, -36, 0, 32)
+        name.TextTruncate = Enum.TextTruncate.AtEnd
+        local id = text(card, "Place ID: " .. tostring(game.PlaceId), 14, Enum.Font.Gotham, Enum.TextXAlignment.Left, 7)
+        id.TextColor3 = gray
+        id.Position = UDim2.fromOffset(19, 55)
+        id.Size = UDim2.new(1, -38, 0, 25)
     end
-    pill(hero, "WINTER EDITION  •  PROTOTYPE", 18, 17, 217)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(20, 55),
-        Size = UDim2.new(1, -40, 0, 45),
-        BackgroundTransparency = 1,
-        Text = "Welcome to Coco Hub",
-        TextColor3 = white,
-        TextSize = 28,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 8,
-    }, hero)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(21, 108),
-        Size = UDim2.new(1, -75, 0, 48),
-        BackgroundTransparency = 1,
-        Text = "One home for universal scripts. Browse sections and add modules as the hub grows.",
-        TextColor3 = softText,
-        TextSize = 15,
-        TextWrapped = true,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        ZIndex = 8,
-    }, hero)
-    local sectionLabel = make("TextLabel", {
-        Size = UDim2.new(1, -5, 0, 27),
-        BackgroundTransparency = 1,
-        Text = "Explore sections",
-        TextColor3 = white,
-        TextSize = 18,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        LayoutOrder = layoutIndex + 1,
-        ZIndex = 6,
-    }, page)
-    layoutIndex = layoutIndex + 1
-    local row = make("ScrollingFrame", {
-        Size = UDim2.new(1, -5, 0, 138),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ScrollBarThickness = 0,
-        ScrollingDirection = Enum.ScrollingDirection.X,
-        CanvasSize = UDim2.fromOffset(668, 0),
-        LayoutOrder = layoutIndex + 1,
-        ZIndex = 6,
-    }, page)
-    layoutIndex = layoutIndex + 1
-    make("UIListLayout", {
-        FillDirection = Enum.FillDirection.Horizontal,
-        Padding = UDim.new(0, 12),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-    }, row)
-    for index, info in ipairs({
-        {name = "Combat", tint = coral, code = "CB"},
-        {name = "Movement", tint = ice, code = "MV"},
-        {name = "Visuals", tint = violet, code = "VS"},
-    }) do
-        local targetSection = info.name
-        local tile = make("TextButton", {
-            Size = UDim2.fromOffset(210, 126),
-            BackgroundColor3 = Color3.fromRGB(20, 48, 78),
-            BorderSizePixel = 0,
-            Text = "",
-            LayoutOrder = index,
-            AutoButtonColor = false,
-            ZIndex = 7,
-        }, row)
-        round(tile, 17)
-        make("UIStroke", {Color = info.tint, Thickness = 1.2, Transparency = 0.35}, tile)
-        local badge = make("TextLabel", {
-            Position = UDim2.fromOffset(15, 15),
-            Size = UDim2.fromOffset(36, 36),
-            BackgroundColor3 = info.tint,
-            BackgroundTransparency = 0.7,
-            Text = info.code,
-            TextColor3 = white,
-            TextSize = 13,
-            Font = Enum.Font.GothamBold,
-            ZIndex = 8,
-        }, tile)
-        round(badge, 11)
-        make("TextLabel", {
-            Position = UDim2.fromOffset(15, 56),
-            Size = UDim2.fromOffset(180, 30),
-            BackgroundTransparency = 1,
-            Text = info.name,
-            TextColor3 = white,
-            TextSize = 19,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Font = Enum.Font.GothamBold,
-            ZIndex = 8,
-        }, tile)
-        make("TextLabel", {
-            Position = UDim2.fromOffset(15, 88),
-            Size = UDim2.fromOffset(182, 27),
-            BackgroundTransparency = 1,
-            Text = "Open section  →",
-            TextColor3 = softText,
-            TextSize = 12,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Font = Enum.Font.Gotham,
-            ZIndex = 8,
-        }, tile)
-        tile.MouseButton1Click:Connect(function() selectTab(targetSection) end)
-        tile.MouseEnter:Connect(function() if motion then animate(tile, 0.18, {BackgroundColor3 = Color3.fromRGB(30, 65, 97)}) end end)
-        tile.MouseLeave:Connect(function() if motion then animate(tile, 0.18, {BackgroundColor3 = Color3.fromRGB(20, 48, 78)}) end end)
-    end
-    local statusCard = card(99)
-    pill(statusCard, "READY FOR MODULES", 16, 16, 155)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(17, 53),
-        Size = UDim2.new(1, -30, 0, 29),
-        BackgroundTransparency = 1,
-        Text = "Sections are live. Scripts can be registered when we build them.",
-        TextColor3 = softText,
-        TextSize = 13,
-        TextWrapped = true,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        ZIndex = 7,
-    }, statusCard)
-end
-
-local function renderCategory(tab)
-    if tab == "Game" then
-        local gameCard = card(103, Color3.fromRGB(19, 51, 80))
-        pill(gameCard, "CURRENT GAME", 16, 15, 110)
-        make("TextLabel", {
-            Position = UDim2.fromOffset(17, 47),
-            Size = UDim2.new(1, -35, 0, 30),
-            BackgroundTransparency = 1,
-            Text = tostring(game.Name),
-            TextColor3 = white,
-            TextSize = 19,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextTruncate = Enum.TextTruncate.AtEnd,
-            Font = Enum.Font.GothamBold,
-            ZIndex = 7,
-        }, gameCard)
-        make("TextLabel", {
-            Position = UDim2.fromOffset(17, 77),
-            Size = UDim2.new(1, -35, 0, 18),
-            BackgroundTransparency = 1,
-            Text = "Place ID: " .. tostring(game.PlaceId),
-            TextColor3 = softText,
-            TextSize = 12,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Font = Enum.Font.Gotham,
-            ZIndex = 7,
-        }, gameCard)
-    end
-    local introCard = card(92)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(17, 17),
-        Size = UDim2.new(1, -35, 0, 31),
-        BackgroundTransparency = 1,
-        Text = tab .. " collection",
-        TextColor3 = white,
-        TextSize = 20,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 7,
-    }, introCard)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(18, 50),
-        Size = UDim2.new(1, -35, 0, 28),
-        BackgroundTransparency = 1,
-        Text = descriptions[tab],
-        TextColor3 = softText,
-        TextSize = 13,
-        TextWrapped = true,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        ZIndex = 7,
-    }, introCard)
-    if #modules[tab] == 0 then
-        for _, titleText in ipairs(ideas[tab]) do
-            emptyCard(titleText, "A space for a future universal module.")
-        end
-    else
-        for _, module in ipairs(modules[tab]) do moduleCard(module) end
-    end
-end
-
-local function settingCard(titleText, detailText, valueText, onClick)
-    local frame = card(92)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(16, 15),
-        Size = UDim2.new(1, -140, 0, 28),
-        BackgroundTransparency = 1,
-        Text = titleText,
-        TextColor3 = white,
-        TextSize = 18,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 7,
-    }, frame)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(17, 49),
-        Size = UDim2.new(1, -142, 0, 28),
-        BackgroundTransparency = 1,
-        Text = detailText,
-        TextColor3 = softText,
-        TextSize = 12,
-        TextWrapped = true,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        ZIndex = 7,
-    }, frame)
-    local control = make("TextButton", {
-        AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -16, 0.5, 0),
-        Size = UDim2.fromOffset(100, 34),
-        BackgroundColor3 = Color3.fromRGB(31, 76, 108),
-        Text = valueText,
-        TextColor3 = white,
-        TextSize = 13,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 7,
-    }, frame)
-    round(control, 11)
-    control.MouseButton1Click:Connect(onClick)
-    return control
-end
-local function renderConfigs()
-    local headerCard = card(85)
-    pill(headerCard, "UI SETTINGS", 16, 14, 94)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(17, 46),
-        Size = UDim2.new(1, -32, 0, 27),
-        BackgroundTransparency = 1,
-        Text = "Tune how Coco Hub looks and moves.",
-        TextColor3 = softText,
-        TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        ZIndex = 7,
-    }, headerCard)
-    local motionButton
-    motionButton = settingCard("UI animations", "Transitions and hover effects.", motion and "ON" or "OFF", function()
-        motion = not motion
-        motionButton.Text = motion and "ON" or "OFF"
-        notify("Animations " .. (motion and "enabled" or "reduced"))
-    end)
-    settingCard("Accent color", "Switch between icy blue and warm gold.", accent == ice and "ICE" or "GOLD", function()
-        accent = accent == ice and gold or ice
-        mainStroke.Color = accent
-        shadow.BackgroundColor3 = accent
-        notify("Accent changed")
-        renderPage()
-    end)
-    settingCard("Reset layout", "Center and reopen the hub.", "RESET", function()
-        main.Position = UDim2.fromScale(0.5, 0.5)
-        notify("Layout reset")
-    end)
-end
-local function renderMore()
-    local info = card(170, Color3.fromRGB(17, 51, 81))
-    pill(info, "COCO HUB  •  PROTOTYPE", 16, 16, 174)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(17, 53),
-        Size = UDim2.new(1, -34, 0, 34),
-        BackgroundTransparency = 1,
-        Text = "A home for every script",
-        TextColor3 = white,
-        TextSize = 22,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        ZIndex = 7,
-    }, info)
-    make("TextLabel", {
-        Position = UDim2.fromOffset(18, 93),
-        Size = UDim2.new(1, -36, 0, 61),
-        BackgroundTransparency = 1,
-        Text = "This first build has the layout, navigation, search, and module slots. We can add real universal scripts section by section.",
-        TextColor3 = softText,
-        TextSize = 14,
-        TextWrapped = true,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        ZIndex = 7,
-    }, info)
-    emptyCard("Module API", "Future scripts can register directly with CocoHub.")
-    emptyCard("Updates", "More sections and layouts can be added here.")
-end
-renderPage = function()
-    clearPage()
-    headerTitle.Text = query ~= "" and "Search" or selected
-    headerSub.Text = query ~= "" and ("Results for \"" .. query .. "\"") or (selected == "Home" and "Everything in one place." or selected == "Configs" and "Make the hub yours." or selected == "More" and "About this prototype." or descriptions[selected] or "")
-    if query ~= "" then
-        local found = 0
-        for _, tab in ipairs({"Game", "Combat", "Movement", "Visuals"}) do
-            for _, module in ipairs(modules[tab]) do
-                if string.find(string.lower(module.title .. " " .. (module.description or "")), string.lower(query), 1, true) then
-                    moduleCard(module)
-                    found = found + 1
-                end
-            end
-        end
-        if found == 0 then
-            local empty = card(155)
-            make("TextLabel", {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundTransparency = 1,
-                Text = "No modules found yet.\nAdd a script to start your collection.",
-                TextColor3 = softText,
-                TextSize = 16,
-                Font = Enum.Font.GothamMedium,
-                ZIndex = 7,
-            }, empty)
-        end
-    elseif selected == "Home" then
-        renderHome()
-    elseif selected == "Configs" then
-        renderConfigs()
-    elseif selected == "More" then
-        renderMore()
-    else
-        renderCategory(selected)
-    end
-end
-selectTab = function(tab)
-    selected = tab
-    if search.Text ~= "" then search.Text = "" end
-    for name, entry in pairs(navItems) do
-        local active = name == selected
-        entry.mark.BackgroundTransparency = active and 0 or 1
-        entry.name.TextColor3 = active and white or softText
-        entry.icon.BackgroundColor3 = active and Color3.fromRGB(53, 107, 140) or Color3.fromRGB(31, 65, 95)
-        if motion then
-            animate(entry.button, 0.2, {BackgroundTransparency = active and 0.78 or 1})
+    if modules[activeTab] then
+        if #modules[activeTab] == 0 then
+            for _, idea in ipairs(slotIdeas[activeTab]) do slotCard(idea, "Ready for a future universal module") end
         else
-            entry.button.BackgroundTransparency = active and 0.78 or 1
+            for _, module in ipairs(modules[activeTab]) do moduleCard(module) end
         end
-    end
-    renderPage()
-    if motion then
-        local x = page.Position.X.Offset
-        local y = page.Position.Y.Offset
-        page.Position = UDim2.fromOffset(x + 10, y)
-        animate(page, 0.22, {Position = UDim2.fromOffset(x, y)})
+    elseif activeTab == "Configs" then
+        settingCard("UI animations", "Transitions and glow effects", motionEnabled and "ON" or "OFF", function()
+            motionEnabled = not motionEnabled
+            renderSection()
+            notify("Animations " .. (motionEnabled and "enabled" or "reduced"))
+        end)
+        settingCard("Preview video", "Requires a Roblox video asset ID", previewAssetId ~= 0 and "SET" or "NONE", function()
+            notify("Set a Roblox video asset ID in the script to enable preview")
+        end)
+    elseif activeTab == "More" then
+        slotCard("Coco Hub prototype", "The home for universal scripts and future modules")
+        slotCard("Module registry", "Register scripts into Game, Combat, Movement, or Visuals")
     end
 end
-for name, entry in pairs(navItems) do
-    local targetSection = name
-    entry.button.MouseButton1Click:Connect(function() selectTab(targetSection) end)
-    entry.button.MouseEnter:Connect(function()
-        if targetSection ~= selected and motion then animate(entry.button, 0.16, {BackgroundTransparency = 0.88}) end
+local function selectTab(tab)
+    if not table.find(tabs, tab) then return end
+    activeTab = tab
+    home.Visible = tab == "Home"
+    sectionHeader.Visible = tab ~= "Home"
+    sections.Visible = tab ~= "Home"
+    for name, item in pairs(navItems) do
+        local chosen = name == tab
+        if motionEnabled then animate(item.button, 0.18, {BackgroundTransparency = chosen and 0.85 or 1})
+        else item.button.BackgroundTransparency = chosen and 0.85 or 1 end
+        item.edge.Transparency = chosen and 0.18 or 1
+        item.label.TextColor3 = chosen and ivory or gray
+    end
+    if tab ~= "Home" then renderSection() end
+end
+for name, item in pairs(navItems) do
+    local target = name
+    item.button.MouseButton1Click:Connect(function() selectTab(target) end)
+    item.button.MouseEnter:Connect(function()
+        if target ~= activeTab and motionEnabled then animate(item.button, 0.15, {BackgroundTransparency = 0.93}) end
     end)
-    entry.button.MouseLeave:Connect(function()
-        if targetSection ~= selected and motion then animate(entry.button, 0.16, {BackgroundTransparency = 1}) end
+    item.button.MouseLeave:Connect(function()
+        if target ~= activeTab and motionEnabled then animate(item.button, 0.15, {BackgroundTransparency = 1}) end
     end)
 end
-search:GetPropertyChangedSignal("Text"):Connect(function()
-    query = string.match(search.Text, "^%s*(.-)%s*$") or ""
-    renderPage()
-end)
 
-local function updateHubLayout()
-    local view = camera and camera.ViewportSize or Vector2.new(960, 540)
-    local width = math.max(280, math.min(920, view.X - 20))
-    local height = math.max(300, math.min(560, view.Y - 20))
-    main.Size = UDim2.fromOffset(width, height)
-    shadow.Size = UDim2.fromOffset(width + 12, height + 12)
-    local narrow = width < 650
-    if narrow then
-        sidebar.Size = UDim2.new(1, 0, 0, 100)
-        nav.Position = UDim2.fromOffset(12, 59)
-        nav.Size = UDim2.new(1, -24, 0, 38)
-        nav.ScrollingDirection = Enum.ScrollingDirection.X
-        nav.CanvasSize = UDim2.fromOffset(#tabs * 111, 0)
-        navLayout.FillDirection = Enum.FillDirection.Horizontal
-        sidebarFoot.Visible = false
-        content.Position = UDim2.fromOffset(0, 100)
-        content.Size = UDim2.new(1, 0, 1, -100)
-        header.Size = UDim2.new(1, 0, 0, 105)
-        headerSub.Visible = false
-        search.Position = UDim2.new(1, -20, 0, 59)
-        search.Size = UDim2.new(1, -40, 0, 36)
-        page.Position = UDim2.fromOffset(15, 111)
-        page.Size = UDim2.new(1, -30, 1, -125)
-        for _, entry in pairs(navItems) do
-            entry.button.Size = UDim2.fromOffset(104, 36)
-            entry.mark.Visible = false
-            entry.icon.Position = UDim2.fromOffset(5, 4)
-            entry.name.Position = UDim2.fromOffset(38, 0)
-            entry.name.Size = UDim2.new(1, -40, 1, 0)
-            entry.name.TextSize = 13
-        end
-    else
-        sidebar.Size = UDim2.new(0, 190, 1, 0)
-        nav.Position = UDim2.fromOffset(12, 102)
-        nav.Size = UDim2.new(1, -24, 1, -120)
-        nav.ScrollingDirection = Enum.ScrollingDirection.Y
-        nav.CanvasSize = UDim2.fromOffset(0, #tabs * 48)
-        navLayout.FillDirection = Enum.FillDirection.Vertical
-        sidebarFoot.Visible = true
-        content.Position = UDim2.fromOffset(190, 0)
-        content.Size = UDim2.new(1, -190, 1, 0)
-        header.Size = UDim2.new(1, 0, 0, 76)
-        headerSub.Visible = true
-        search.Position = UDim2.new(1, -60, 0, 21)
-        search.Size = UDim2.fromOffset(190, 38)
-        page.Position = UDim2.fromOffset(20, 78)
-        page.Size = UDim2.new(1, -40, 1, -96)
-        for _, entry in pairs(navItems) do
-            entry.button.Size = UDim2.new(1, -2, 0, 42)
-            entry.mark.Visible = true
-            entry.icon.Position = UDim2.fromOffset(10, 7)
-            entry.name.Position = UDim2.fromOffset(47, 0)
-            entry.name.Size = UDim2.new(1, -50, 1, 0)
-            entry.name.TextSize = 16
-        end
+previewButton.MouseButton1Click:Connect(function()
+    if previewAssetId == 0 then
+        notify("Video preview needs a Roblox video asset ID")
+        return
     end
-end
-updateHubLayout()
-if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateHubLayout) end
-
-local dragging = false
-local dragStart, startPosition
-headerTitle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPosition = main.Position
+    previewVideo.Video = "rbxassetid://" .. tostring(previewAssetId)
+    previewVideo.Visible = true
+    previewButton.Visible = false
+    previewLabel.Visible = false
+    local ok = pcall(function() previewVideo:Play() end)
+    if not ok then
+        previewVideo.Visible = false
+        previewButton.Visible = true
+        previewLabel.Visible = true
+        notify("Video could not play")
     end
 end)
-headerTitle.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if not dragging or not main.Parent then return end
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        local delta = input.Position - dragStart
-        main.Position = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X, startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
-        shadow.Position = main.Position
-    end
-end)
-close.MouseButton1Click:Connect(function()
-    main.Visible = false
-    shadow.Visible = false
-    dimmer.Visible = false
+minimize.MouseButton1Click:Connect(function()
+    hub.Visible = false
     bubble.Visible = true
 end)
 bubble.MouseButton1Click:Connect(function()
-    main.Visible = true
-    shadow.Visible = true
-    dimmer.Visible = true
+    hub.Visible = true
     bubble.Visible = false
-    openingScale.Scale = motion and 0.92 or 1
-    if motion then animate(openingScale, 0.3, {Scale = 1}) end
+end)
+close.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+local fpsCount, fpsElapsed = 0, 0
+local perfConnection
+perfConnection = RunService.RenderStepped:Connect(function(dt)
+    if not gui.Parent then perfConnection:Disconnect(); return end
+    fpsCount = fpsCount + 1
+    fpsElapsed = fpsElapsed + dt
+    if fpsElapsed >= 1 then
+        fpsText.Text = "▣  FPS  " .. tostring(math.floor(fpsCount / fpsElapsed + 0.5))
+        fpsCount, fpsElapsed = 0, 0
+        local ping = "--"
+        pcall(function()
+            local raw = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
+            ping = string.match(raw, "[%d%.]+") or "--"
+        end)
+        pingText.Text = "◉  Ping  " .. ping .. " ms"
+    end
 end)
 
 local hubApi = {}
@@ -1281,32 +1043,48 @@ function hubApi:RegisterModule(info)
     if type(info) ~= "table" or not modules[info.section] or type(info.title) ~= "string" or type(info.run) ~= "function" then
         return false, "Expected {section, title, run, description?}"
     end
-    for _, existing in ipairs(modules[info.section]) do
-        if existing.title == info.title then return false, "Module already registered" end
+    for _, previous in ipairs(modules[info.section]) do
+        if previous.title == info.title then return false, "Module already registered" end
     end
     table.insert(modules[info.section], info)
-    if selected == info.section or query ~= "" then renderPage() end
+    if activeTab == info.section then renderSection() end
     notify(info.title .. " added to " .. info.section)
     return true
 end
 function hubApi:OpenTab(tab)
     if not table.find(tabs, tab) then return false end
-    if not main.Visible then
-        main.Visible = true
-        shadow.Visible = true
-        dimmer.Visible = true
-        bubble.Visible = false
-    end
+    hub.Visible = true
+    bubble.Visible = false
     selectTab(tab)
     return true
 end
+function hubApi:SetPreviewAssetId(id)
+    if type(id) ~= "number" or id <= 0 then return false end
+    previewAssetId = id
+    return true
+end
 function hubApi:Destroy()
-    if gui.Parent then gui:Destroy() end
+    gui:Destroy()
 end
 local environment = (getgenv and getgenv()) or _G
 environment.CocoHub = hubApi
 
+layout()
+if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(layout) end
+for _, entry in ipairs({assets.hubBackground, assets.hubLogo}) do
+    task.spawn(function()
+        local waited = 0
+        while not entry.asset and gui.Parent and waited < 10 do task.wait(0.2); waited = waited + 0.2 end
+        if not gui.Parent then return end
+        if entry == assets.hubBackground and entry.asset then hubBackground.Image = entry.asset end
+        if entry == assets.hubLogo and entry.asset then
+            railLogo.Image = entry.asset
+            bigLogo.Image = entry.asset
+            railFallback.Visible = false
+            bigFallback.Visible = false
+        end
+    end)
+end
 selectTab("Home")
-if motion then animate(openingScale, 0.38, {Scale = 1}) else openingScale.Scale = 1 end
 animate(veil, 0.4, {BackgroundTransparency = 1}).Completed:Wait()
 veil:Destroy()
