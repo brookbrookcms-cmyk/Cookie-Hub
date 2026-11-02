@@ -1,21 +1,25 @@
--- Cookie Hub Christmas loader
--- Client-side script. The old filename is kept so existing loadstrings keep working.
+-- Coco Hub Christmas loader
+-- The filename stays the same so existing Delta loadstrings keep working.
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local ContentProvider = game:GetService("ContentProvider")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-
 local player = Players.LocalPlayer
 if not player then return end
 local playerGui = player:WaitForChild("PlayerGui")
-local imageUrl = "https://raw.githubusercontent.com/brookbrookcms-cmyk/Cookie-Hub/main/ChristmasBackgroundV2.jpg"
-local imageFile = "cookie_hub_christmas_background_v2.jpg"
-local introTime = 5.8
+local camera = workspace.CurrentCamera
+
+local assetBase = "https://raw.githubusercontent.com/brookbrookcms-cmyk/Cookie-Hub/main/"
+local assets = {
+    landscape = {url = assetBase .. "CocoBackgroundLandscape.jpg", file = "coco_hub_landscape_v1.jpg", signature = "\255\216\255"},
+    portrait = {url = assetBase .. "CocoBackgroundPortrait.jpg", file = "coco_hub_portrait_v1.jpg", signature = "\255\216\255"},
+    logo = {url = assetBase .. "CocoLogo.png", file = "coco_hub_logo_v1.png", signature = "\137PNG"},
+}
+local duration = 10.2
 
 for _, parent in ipairs({CoreGui, playerGui}) do
-    for _, name in ipairs({"PotassiumLoader", "CookieHubChristmas", "CookieHubGui"}) do
+    for _, name in ipairs({"PotassiumLoader", "CookieHubChristmas", "CookieHubGui", "CocoHubLoader"}) do
         pcall(function()
             local old = parent:FindFirstChild(name)
             if old then old:Destroy() end
@@ -23,31 +27,27 @@ for _, parent in ipairs({CoreGui, playerGui}) do
     end
 end
 
-local function new(className, props, parent)
+local function make(className, properties, parent)
     local object = Instance.new(className)
-    for key, value in pairs(props) do object[key] = value end
+    for key, value in pairs(properties) do object[key] = value end
     object.Parent = parent
     return object
 end
 
-local function rounded(object, pixels)
-    new("UICorner", {CornerRadius = UDim.new(0, pixels)}, object)
+local function round(object, radius)
+    make("UICorner", {CornerRadius = UDim.new(0, radius)}, object)
 end
 
-local function playTween(object, seconds, props, style, direction)
-    local info = TweenInfo.new(seconds, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out)
-    local animation = TweenService:Create(object, info, props)
-    animation:Play()
-    return animation
+local function animate(object, seconds, properties)
+    local tween = TweenService:Create(object, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), properties)
+    tween:Play()
+    return tween
 end
 
-local white = Color3.fromRGB(255, 249, 232)
-local gold = Color3.fromRGB(255, 211, 131)
-local red = Color3.fromRGB(191, 52, 61)
-local deepBlue = Color3.fromRGB(5, 20, 39)
-
-local gui = new("ScreenGui", {
-    Name = "CookieHubChristmas",
+local white = Color3.fromRGB(248, 251, 255)
+local night = Color3.fromRGB(3, 17, 36)
+local gui = make("ScreenGui", {
+    Name = "CocoHubLoader",
     IgnoreGuiInset = true,
     ResetOnSpawn = false,
     DisplayOrder = 10000,
@@ -55,316 +55,300 @@ local gui = new("ScreenGui", {
 }, nil)
 if not pcall(function() gui.Parent = CoreGui end) then gui.Parent = playerGui end
 
-local intro = new("Frame", {
+local intro = make("Frame", {
     Name = "FullscreenIntro",
     Size = UDim2.fromScale(1, 1),
-    BackgroundColor3 = deepBlue,
+    BackgroundColor3 = night,
     BorderSizePixel = 0,
 }, gui)
-new("UIGradient", {
-    Rotation = 90,
-    Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 19, 42)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(18, 61, 74)),
-    }),
-}, intro)
-
-local background = new("ImageLabel", {
-    Name = "ChristmasBackground",
+local background = make("ImageLabel", {
+    Name = "SnowyNight",
     Size = UDim2.fromScale(1, 1),
     BackgroundTransparency = 1,
     ImageTransparency = 1,
     ScaleType = Enum.ScaleType.Crop,
     ZIndex = 1,
 }, intro)
-local dim = new("Frame", {
+
+local snowLayer = make("Frame", {
     Size = UDim2.fromScale(1, 1),
-    BackgroundColor3 = deepBlue,
-    BackgroundTransparency = 0.56,
-    BorderSizePixel = 0,
+    BackgroundTransparency = 1,
     ZIndex = 2,
 }, intro)
-new("UIGradient", {
-    Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.8),
-        NumberSequenceKeypoint.new(0.5, 0.1),
-        NumberSequenceKeypoint.new(1, 0.75),
-    }),
-}, dim)
+local flakes = {}
+for i = 1, 23 do
+    local diameter = 2 + (i % 3)
+    local flake = make("Frame", {
+        Position = UDim2.fromScale(((i * 79) % 97) / 100, ((i * 43) % 101) / 100),
+        Size = UDim2.fromOffset(diameter, diameter),
+        BackgroundColor3 = white,
+        BackgroundTransparency = 0.55 + (i % 3) * 0.1,
+        BorderSizePixel = 0,
+        ZIndex = 2,
+    }, snowLayer)
+    round(flake, 10)
+    flakes[i] = {object = flake, speed = 0.03 + (i % 5) * 0.013}
+end
 
-local snow = new("Frame", {
-    Size = UDim2.fromScale(1, 1),
+local content = make("Frame", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.51),
+    Size = UDim2.fromOffset(600, 315),
     BackgroundTransparency = 1,
     ZIndex = 3,
 }, intro)
-local flakes = {}
-for i = 1, 28 do
-    local diameter = 2 + i % 4
-    local flake = new("Frame", {
-        Position = UDim2.fromScale(((i * 67) % 97) / 100, ((i * 43) % 99) / 100),
-        Size = UDim2.fromOffset(diameter, diameter),
-        BackgroundColor3 = white,
-        BackgroundTransparency = 0.3 + (i % 3) * 0.16,
-        BorderSizePixel = 0,
-        ZIndex = 3,
-    }, snow)
-    rounded(flake, 20)
-    flakes[i] = {object = flake, speed = 0.025 + (i % 5) * 0.012}
-end
+local scale = make("UIScale", {Scale = 1}, content)
 
-local center = new("Frame", {
+local logoFallback = make("Frame", {
     AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.49),
-    Size = UDim2.new(0.86, 0, 0.62, 0),
-    BackgroundTransparency = 1,
+    Position = UDim2.fromOffset(300, 76),
+    Size = UDim2.fromOffset(78, 58),
+    BackgroundColor3 = Color3.fromRGB(151, 75, 20),
+    BorderSizePixel = 0,
+    Rotation = -30,
+    ZIndex = 4,
+}, content)
+round(logoFallback, 45)
+local flesh = make("Frame", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.32),
+    Size = UDim2.fromOffset(66, 32),
+    BackgroundColor3 = white,
+    BorderSizePixel = 0,
     ZIndex = 5,
-}, intro)
-new("UISizeConstraint", {MaxSize = Vector2.new(600, 395)}, center)
+}, logoFallback)
+round(flesh, 30)
 
-local cookie = new("Frame", {
+local logo = make("ImageLabel", {
+    Name = "CoconutLogo",
     AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.22),
-    Size = UDim2.fromOffset(94, 94),
-    BackgroundColor3 = Color3.fromRGB(221, 156, 91),
-    BorderSizePixel = 0,
-    Rotation = -9,
+    Position = UDim2.fromOffset(300, 76),
+    Size = UDim2.fromOffset(116, 106),
+    BackgroundTransparency = 1,
+    ImageTransparency = 1,
+    ImageRectOffset = Vector2.new(455, 255),
+    ImageRectSize = Vector2.new(640, 560),
     ZIndex = 6,
-}, center)
-rounded(cookie, 100)
-new("UIStroke", {Color = Color3.fromRGB(255, 211, 151), Thickness = 3}, cookie)
-for _, chip in ipairs({{0.28, 0.27, 13}, {0.68, 0.25, 10}, {0.51, 0.46, 12}, {0.24, 0.69, 10}, {0.72, 0.68, 13}, {0.47, 0.79, 8}}) do
-    local dot = new("Frame", {
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.fromScale(chip[1], chip[2]),
-        Size = UDim2.fromOffset(chip[3], chip[3]),
-        BackgroundColor3 = Color3.fromRGB(91, 48, 42),
+}, content)
+
+local title = make("TextLabel", {
+    Position = UDim2.fromOffset(0, 130),
+    Size = UDim2.fromOffset(600, 58),
+    BackgroundTransparency = 1,
+    Text = "C O C O   H U B",
+    TextColor3 = white,
+    TextSize = 43,
+    Font = Enum.Font.GothamMedium,
+    ZIndex = 4,
+}, content)
+
+local subtitle = make("TextLabel", {
+    Position = UDim2.fromOffset(160, 193),
+    Size = UDim2.fromOffset(280, 19),
+    BackgroundTransparency = 1,
+    Text = "T H E   C H R I S T M A S   E D I T I O N",
+    TextColor3 = white,
+    TextTransparency = 0.17,
+    TextSize = 12,
+    Font = Enum.Font.Gotham,
+    ZIndex = 4,
+}, content)
+for _, x in ipairs({65, 444}) do
+    make("Frame", {
+        Position = UDim2.fromOffset(x, 202),
+        Size = UDim2.fromOffset(90, 1),
+        BackgroundColor3 = white,
+        BackgroundTransparency = 0.4,
         BorderSizePixel = 0,
-        ZIndex = 7,
-    }, cookie)
-    rounded(dot, 20)
+        ZIndex = 4,
+    }, content)
 end
-local hat = new("Frame", {
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.48, -0.14),
-    Size = UDim2.fromOffset(69, 33),
-    BackgroundColor3 = red,
+
+local track = make("Frame", {
+    Position = UDim2.fromOffset(75, 241),
+    Size = UDim2.fromOffset(450, 24),
+    BackgroundColor3 = Color3.fromRGB(5, 22, 43),
+    BackgroundTransparency = 0.3,
     BorderSizePixel = 0,
-    Rotation = -17,
-    ZIndex = 8,
-}, cookie)
-rounded(hat, 10)
-local brim = new("Frame", {
-    Position = UDim2.fromScale(0, 0.7),
-    Size = UDim2.fromScale(1, 0.35),
+    ZIndex = 4,
+}, content)
+round(track, 20)
+make("UIStroke", {Color = white, Thickness = 1.7, Transparency = 0.05}, track)
+local fill = make("Frame", {
+    Position = UDim2.fromOffset(3, 3),
+    Size = UDim2.new(0, 0, 1, -6),
     BackgroundColor3 = white,
     BorderSizePixel = 0,
-    ZIndex = 9,
-}, hat)
-rounded(brim, 10)
-local pom = new("Frame", {
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.08, 0.08),
-    Size = UDim2.fromOffset(18, 18),
-    BackgroundColor3 = white,
-    BorderSizePixel = 0,
-    ZIndex = 9,
-}, hat)
-rounded(pom, 20)
-
-local eyebrow = new("TextLabel", {
-    AnchorPoint = Vector2.new(0.5, 0),
-    Position = UDim2.fromScale(0.5, 0.43),
-    Size = UDim2.new(1, 0, 0.07, 0),
-    BackgroundTransparency = 1,
-    Text = "THE CHRISTMAS EDITION",
-    TextColor3 = gold,
-    TextScaled = true,
-    Font = Enum.Font.GothamBold,
-    ZIndex = 6,
-}, center)
-new("UITextSizeConstraint", {MaxTextSize = 16}, eyebrow)
-local title = new("TextLabel", {
-    AnchorPoint = Vector2.new(0.5, 0),
-    Position = UDim2.fromScale(0.5, 0.51),
-    Size = UDim2.new(1, 0, 0.18, 0),
-    BackgroundTransparency = 1,
-    Text = "COOKIE HUB",
-    TextColor3 = white,
-    TextScaled = true,
-    Font = Enum.Font.GothamBlack,
-    ZIndex = 6,
-}, center)
-new("UITextSizeConstraint", {MaxTextSize = 55}, title)
-new("UIStroke", {Color = deepBlue, Thickness = 1.5, Transparency = 0.3}, title)
-local subtitle = new("TextLabel", {
-    AnchorPoint = Vector2.new(0.5, 0),
-    Position = UDim2.fromScale(0.5, 0.70),
-    Size = UDim2.new(1, 0, 0.07, 0),
-    BackgroundTransparency = 1,
-    Text = "Your winter adventure starts here",
-    TextColor3 = white,
-    TextTransparency = 0.1,
-    TextScaled = true,
-    Font = Enum.Font.GothamMedium,
-    ZIndex = 6,
-}, center)
-new("UITextSizeConstraint", {MaxTextSize = 20}, subtitle)
-
-local track = new("Frame", {
-    AnchorPoint = Vector2.new(0.5, 0),
-    Position = UDim2.fromScale(0.5, 0.83),
-    Size = UDim2.new(0.74, 0, 0, 9),
-    BackgroundColor3 = Color3.fromRGB(226, 228, 224),
-    BackgroundTransparency = 0.72,
-    BorderSizePixel = 0,
-    ZIndex = 6,
-}, center)
-rounded(track, 12)
-local fill = new("Frame", {
-    Size = UDim2.fromScale(0, 1),
-    BackgroundColor3 = gold,
-    BorderSizePixel = 0,
-    ZIndex = 7,
+    ZIndex = 5,
 }, track)
-rounded(fill, 12)
-new("UIGradient", {
-    Color = ColorSequence.new(Color3.fromRGB(255, 191, 104), Color3.fromRGB(255, 242, 181)),
-}, fill)
-local status = new("TextLabel", {
-    AnchorPoint = Vector2.new(0.5, 0),
-    Position = UDim2.fromScale(0.5, 0.89),
-    Size = UDim2.new(0.74, 0, 0.08, 0),
-    BackgroundTransparency = 1,
-    Text = "Gathering snowflakes...",
-    TextColor3 = white,
-    TextTransparency = 0.08,
-    TextScaled = true,
-    Font = Enum.Font.GothamMedium,
-    ZIndex = 6,
-}, center)
-new("UITextSizeConstraint", {MaxTextSize = 16}, status)
+round(fill, 16)
 
-local imageFinished = false
-local function loadBackground()
+local status = make("TextLabel", {
+    Position = UDim2.fromOffset(75, 285),
+    Size = UDim2.fromOffset(450, 20),
+    BackgroundTransparency = 1,
+    Text = "Starting Coco Hub",
+    TextColor3 = white,
+    TextTransparency = 0.2,
+    TextSize = 14,
+    Font = Enum.Font.Gotham,
+    ZIndex = 4,
+}, content)
+local percent = make("TextLabel", {
+    Position = UDim2.fromOffset(475, 285),
+    Size = UDim2.fromOffset(50, 20),
+    BackgroundTransparency = 1,
+    Text = "0%",
+    TextColor3 = white,
+    TextTransparency = 0.2,
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Right,
+    Font = Enum.Font.Gotham,
+    ZIndex = 5,
+}, content)
+
+local function viewport()
+    return camera and camera.ViewportSize or Vector2.new(960, 540)
+end
+local function isPortrait()
+    local size = viewport()
+    return size.X / math.max(size.Y, 1) < 1.15
+end
+local function updateLayout()
+    local size = viewport()
+    scale.Scale = math.min(1, size.X / 670, size.Y / 390)
+    local chosen = isPortrait() and assets.portrait or assets.landscape
+    local available = chosen.asset or assets.landscape.asset or assets.portrait.asset
+    if available and intro.Parent and background.Image ~= available then
+        background.Image = available
+        animate(background, 0.45, {ImageTransparency = 0})
+    end
+end
+updateLayout()
+local cameraConnection
+if camera then cameraConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateLayout) end
+
+local function downloadAsset(entry)
     local assetFn = getcustomasset or getsynasset
-    if not assetFn then imageFinished = true; return end
+    if not (assetFn and writefile) then return end
     local function useFile()
-        local ok, asset = pcall(function() return assetFn(imageFile) end)
-        if ok and type(asset) == "string" and #asset > 0 and gui.Parent then
-            background.Image = asset
-            pcall(function() ContentProvider:PreloadAsync({background}) end)
-            playTween(background, 0.6, {ImageTransparency = 0})
+        local ok, asset = pcall(function() return assetFn(entry.file) end)
+        if ok and type(asset) == "string" and #asset > 0 then
+            entry.asset = asset
             return true
         end
         return false
     end
-    if isfile and isfile(imageFile) and useFile() then imageFinished = true; return end
+    if isfile and isfile(entry.file) and useFile() then return end
     local data
     local requestFn = request or http_request or (syn and syn.request) or (http and http.request)
     if requestFn then
-        local ok, result = pcall(function() return requestFn({Url = imageUrl, Method = "GET"}) end)
-        if ok and result and (result.StatusCode == 200 or result.Success) then data = result.Body end
+        local ok, response = pcall(function() return requestFn({Url = entry.url, Method = "GET"}) end)
+        if ok and response and (response.StatusCode == 200 or response.Success) then data = response.Body end
     end
     if not data then
-        local ok, result = pcall(function() return game:HttpGet(imageUrl) end)
-        if ok then data = result end
+        local ok, response = pcall(function() return game:HttpGet(entry.url) end)
+        if ok then data = response end
     end
-    if type(data) == "string" and data:sub(1, 3) == "\255\216\255" and writefile then
-        local ok = pcall(function() writefile(imageFile, data) end)
+    if type(data) == "string" and data:sub(1, #entry.signature) == entry.signature then
+        local ok = pcall(function() writefile(entry.file, data) end)
         if ok then useFile() end
     end
-    imageFinished = true
 end
 
-task.spawn(loadBackground)
-playTween(cookie, 1.4, {Rotation = 7, Position = UDim2.fromScale(0.5, 0.19)}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+for _, entry in pairs(assets) do
+    task.spawn(function()
+        downloadAsset(entry)
+        if not intro.Parent then return end
+        if entry == assets.logo and entry.asset then
+            logo.Image = entry.asset
+            logoFallback.Visible = false
+            animate(logo, 0.4, {ImageTransparency = 0})
+        else
+            updateLayout()
+        end
+    end)
+end
+
 local snowConnection
 snowConnection = RunService.RenderStepped:Connect(function(dt)
-    if not gui.Parent or not intro.Parent then snowConnection:Disconnect(); return end
+    if not intro.Parent then snowConnection:Disconnect(); return end
     for _, entry in ipairs(flakes) do
-        local position = entry.object.Position
-        local y = position.Y.Scale + entry.speed * dt
+        local p = entry.object.Position
+        local y = p.Y.Scale + dt * entry.speed
         if y > 1.03 then y = -0.03 end
-        entry.object.Position = UDim2.fromScale(position.X.Scale, y)
+        entry.object.Position = UDim2.fromScale(p.X.Scale, y)
     end
 end)
 
-local began = os.clock()
-while gui.Parent do
-    local elapsed = os.clock() - began
-    local progress = math.min(elapsed / introTime, 0.95)
-    fill.Size = UDim2.fromScale(progress, 1)
-    if progress < 0.28 then
-        status.Text = "Gathering snowflakes..."
-    elseif progress < 0.6 then
-        status.Text = "Lighting the Christmas tree..."
+local started = os.clock()
+while gui.Parent and os.clock() - started < duration do
+    local progress = math.clamp((os.clock() - started) / duration, 0, 1)
+    fill.Size = UDim2.new(0, math.floor(444 * progress), 1, -6)
+    percent.Text = tostring(math.floor(progress * 100)) .. "%"
+    if progress < 0.16 then
+        status.Text = "Starting Coco Hub"
+    elseif progress < 0.44 then
+        status.Text = "Loading interface files"
+    elseif progress < 0.54 then
+        status.Text = "Detecting executor"
+    elseif progress < 0.72 then
+        status.Text = "Loading modules"
     else
-        status.Text = "Baking something sweet..."
+        status.Text = "Finishing setup"
     end
-    if elapsed >= introTime and (imageFinished or elapsed >= introTime + 3) then break end
     task.wait(0.03)
 end
 if not gui.Parent then return end
 if snowConnection then snowConnection:Disconnect() end
-status.Text = "Ready for Christmas"
-playTween(fill, 0.3, {Size = UDim2.fromScale(1, 1)}).Completed:Wait()
-task.wait(0.55)
+if cameraConnection then cameraConnection:Disconnect() end
+fill.Size = UDim2.new(0, 444, 1, -6)
+percent.Text = "100%"
+status.Text = "Ready"
+task.wait(1.1)
 if not gui.Parent then return end
 
-local veil = new("Frame", {
+local veil = make("Frame", {
     Size = UDim2.fromScale(1, 1),
-    BackgroundColor3 = deepBlue,
+    BackgroundColor3 = night,
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     ZIndex = 20,
 }, gui)
-playTween(veil, 0.35, {BackgroundTransparency = 0}).Completed:Wait()
+animate(veil, 0.4, {BackgroundTransparency = 0}).Completed:Wait()
 intro:Destroy()
 
-local main = new("Frame", {
+local main = make("Frame", {
     Name = "MainHub",
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.new(0.86, 0, 0, 210),
-    BackgroundColor3 = Color3.fromRGB(16, 42, 52),
+    Size = UDim2.new(0.86, 0, 0, 205),
+    BackgroundColor3 = Color3.fromRGB(8, 30, 52),
     BorderSizePixel = 0,
     ZIndex = 2,
 }, gui)
-new("UISizeConstraint", {MaxSize = Vector2.new(430, 210)}, main)
-rounded(main, 18)
-new("UIStroke", {Color = gold, Thickness = 2, Transparency = 0.15}, main)
-local banner = new("Frame", {
-    Size = UDim2.new(1, 0, 0, 52),
-    BackgroundColor3 = red,
-    BorderSizePixel = 0,
+make("UISizeConstraint", {MaxSize = Vector2.new(430, 205)}, main)
+round(main, 16)
+make("UIStroke", {Color = white, Thickness = 1.5, Transparency = 0.15}, main)
+make("TextLabel", {
+    Position = UDim2.new(0, 20, 0, 15),
+    Size = UDim2.new(1, -40, 0, 38),
+    BackgroundTransparency = 1,
+    Text = "C O C O   H U B",
+    TextColor3 = white,
+    TextSize = 22,
+    Font = Enum.Font.GothamMedium,
     ZIndex = 3,
 }, main)
-rounded(banner, 18)
-new("Frame", {
-    Position = UDim2.new(0, 0, 1, -17),
-    Size = UDim2.new(1, 0, 0, 17),
-    BackgroundColor3 = red,
-    BorderSizePixel = 0,
-    ZIndex = 3,
-}, banner)
-new("TextLabel", {
-    Size = UDim2.fromScale(1, 1),
-    BackgroundTransparency = 1,
-    Text = "COOKIE HUB  •  CHRISTMAS",
-    TextColor3 = white,
-    TextSize = 18,
-    Font = Enum.Font.GothamBold,
-    ZIndex = 4,
-}, banner)
-new("TextLabel", {
-    Position = UDim2.new(0, 15, 0, 62),
-    Size = UDim2.new(1, -30, 0, 125),
+make("TextLabel", {
+    Position = UDim2.new(0, 20, 0, 65),
+    Size = UDim2.new(1, -40, 0, 110),
     BackgroundTransparency = 1,
     Text = "test",
     TextColor3 = white,
     TextSize = 48,
-    Font = Enum.Font.GothamBlack,
+    Font = Enum.Font.GothamBold,
     ZIndex = 3,
 }, main)
-playTween(veil, 0.4, {BackgroundTransparency = 1}).Completed:Wait()
+animate(veil, 0.4, {BackgroundTransparency = 1}).Completed:Wait()
 veil:Destroy()
