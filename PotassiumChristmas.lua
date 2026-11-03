@@ -19,6 +19,7 @@ local assets = {
     audio = {url = assetBase .. "CocoLoaderAudio.mp3", file = "coco_hub_intro_audio_v1.mp3", signature = "ID3"},
     hubBackground = {url = assetBase .. "CocoMonoBackground.jpg", file = "coco_hub_mono_background_v1.jpg", signature = "\255\216\255"},
     hubLogo = {url = assetBase .. "CocoMonoLogo.png", file = "coco_hub_mono_logo_v1.png", signature = "\137PNG"},
+    previewStill = {url = assetBase .. "CocoPreviewStill.jpg", file = "coco_hub_preview_still_v1.jpg", signature = "\255\216\255"},
 }
 local duration = 10.5
 
@@ -408,10 +409,11 @@ local hub = make("Frame", {
     ZIndex = 2,
 }, gui)
 round(hub, 20)
-outline(hub, 0.25, 1.4)
+outline(hub, 0.42, 1.2)
 local hubBackground = make("ImageLabel", {
     Name = "MonochromeWaves",
-    Size = UDim2.fromScale(1, 1),
+    Position = UDim2.fromScale(-0.025, -0.025),
+    Size = UDim2.fromScale(1.05, 1.05),
     BackgroundTransparency = 1,
     Image = assets.hubBackground.asset or "",
     ScaleType = Enum.ScaleType.Crop,
@@ -432,7 +434,7 @@ local rail = make("Frame", {
     ZIndex = 4,
 }, hub)
 round(rail, 18)
-outline(rail, 0.8, 1)
+outline(rail, 0.88, 1)
 local railLogo = make("ImageLabel", {
     BackgroundTransparency = 1,
     Image = assets.hubLogo.asset or "",
@@ -493,36 +495,53 @@ local home = make("ScrollingFrame", {
     CanvasSize = UDim2.fromOffset(0, 0),
     ZIndex = 5,
 }, hub)
-local previewGlow = make("Frame", {BackgroundColor3 = ivory, BackgroundTransparency = 0.9, BorderSizePixel = 0, ZIndex = 5}, home)
-round(previewGlow, 22)
 local preview = make("Frame", {
     Name = "VideoPreview",
     BackgroundColor3 = Color3.fromRGB(13, 13, 13),
-    BackgroundTransparency = 0.08,
+    BackgroundTransparency = 0,
     BorderSizePixel = 0,
     ClipsDescendants = true,
     ZIndex = 6,
 }, home)
 round(preview, 20)
-outline(preview, 0.05, 1.7)
-make("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(24, 24, 24), Color3.fromRGB(8, 8, 8)), Rotation = 90}, preview)
+local previewOutline = outline(preview, 0.35, 1.3)
+local previewImage = make("ImageLabel", {
+    Name = "PreviewStill",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    Image = assets.previewStill.asset or "",
+    ImageTransparency = 0.24,
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 7,
+}, preview)
+local previewShade = make("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = black,
+    BackgroundTransparency = 0.6,
+    BorderSizePixel = 0,
+    ZIndex = 8,
+}, preview)
 local previewVideo = make("VideoFrame", {
     Size = UDim2.fromScale(1, 1),
     BackgroundTransparency = 1,
     Visible = false,
     Looped = false,
     Volume = 0.75,
-    ZIndex = 7,
+    ZIndex = 9,
 }, preview)
-local previewButton = roundedButton(preview, "▶", UDim2.fromOffset(78, 62), 8)
+local previewButton = roundedButton(preview, "▶", UDim2.fromOffset(66, 66), 10)
 previewButton.AnchorPoint = Vector2.new(0.5, 0.5)
 previewButton.Position = UDim2.fromScale(0.5, 0.47)
 previewButton.TextSize = 28
-local previewLabel = text(preview, "Video Preview", 18, Enum.Font.Gotham, Enum.TextXAlignment.Center, 8)
+previewButton:FindFirstChildOfClass("UICorner").CornerRadius = UDim.new(1, 0)
+local playScale = make("UIScale", {Scale = 1}, previewButton)
+local previewLabel = text(preview, "COCO INTRO  /  PREVIEW", 13, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 10)
 previewLabel.TextColor3 = gray
 previewLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 previewLabel.Position = UDim2.fromScale(0.5, 0.7)
 previewLabel.Size = UDim2.new(0.8, 0, 0, 27)
+local previewEyebrow = text(home, "01  /  HOME", 12, Enum.Font.GothamMedium, Enum.TextXAlignment.Left, 6)
+previewEyebrow.TextColor3 = gray
 
 local brand = make("Frame", {BackgroundTransparency = 1, ZIndex = 5}, home)
 local bigLogo = make("ImageLabel", {
@@ -549,7 +568,7 @@ local info = make("Frame", {
     ZIndex = 6,
 }, home)
 round(info, 19)
-outline(info, 0.25, 1.2)
+outline(info, 0.6, 1)
 local profile = make("Frame", {BackgroundTransparency = 1, ZIndex = 7}, info)
 local avatar = make("ImageLabel", {
     BackgroundColor3 = Color3.fromRGB(43, 43, 43),
@@ -586,11 +605,11 @@ local separator2 = make("Frame", {BackgroundColor3 = ivory, BackgroundTransparen
 local performance = make("Frame", {BackgroundTransparency = 1, ZIndex = 5}, home)
 local fpsPill = make("Frame", {BackgroundColor3 = charcoal, BackgroundTransparency = 0.08, BorderSizePixel = 0, ZIndex = 6}, performance)
 round(fpsPill, 30)
-outline(fpsPill, 0.18, 1.2)
+outline(fpsPill, 0.58, 1)
 local fpsText = text(fpsPill, "FPS  --", 22, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 7)
 local pingPill = make("Frame", {BackgroundColor3 = charcoal, BackgroundTransparency = 0.08, BorderSizePixel = 0, ZIndex = 6}, performance)
 round(pingPill, 30)
-outline(pingPill, 0.18, 1.2)
+outline(pingPill, 0.58, 1)
 local pingText = text(pingPill, "Ping  --", 22, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 7)
 
 local sectionHeader = make("Frame", {BackgroundTransparency = 1, Visible = false, ZIndex = 5}, hub)
@@ -650,6 +669,7 @@ local function layout()
     local portrait = w < h
     local railWidth = math.max(150, math.min(230, math.floor(w * 0.18)))
     if portrait then
+        previewEyebrow.Visible = false
         rail.Position = UDim2.fromOffset(6, 5)
         rail.Size = UDim2.new(1, -12, 0, 105)
         railLogo.Position = UDim2.fromOffset(12, 4)
@@ -687,9 +707,7 @@ local function layout()
         local previewHeight = math.min(190, math.max(150, math.floor(h * 0.22)))
         preview.Position = UDim2.fromOffset(16, 18)
         preview.Size = UDim2.fromOffset(area, previewHeight)
-        previewGlow.Position = UDim2.fromOffset(13, 15)
-        previewGlow.Size = UDim2.fromOffset(area + 6, previewHeight + 6)
-        previewButton.Size = UDim2.fromOffset(64, 50)
+        previewButton.Size = UDim2.fromOffset(58, 58)
         brand.Position = UDim2.fromOffset(16, 18 + previewHeight + 14)
         brand.Size = UDim2.fromOffset(area, 158)
         bigLogo.Position = UDim2.new(0.5, -55, 0, 0)
@@ -733,6 +751,7 @@ local function layout()
         sections.Position = UDim2.fromOffset(16, 201)
         sections.Size = UDim2.new(1, -32, 1, -212)
     else
+        previewEyebrow.Visible = true
         rail.Position = UDim2.fromOffset(6, 5)
         rail.Size = UDim2.fromOffset(railWidth, h - 10)
         local brandHeight = math.min(160, math.max(93, math.floor(h * 0.23)))
@@ -775,19 +794,20 @@ local function layout()
         home.Position = UDim2.fromOffset(left, 0)
         home.Size = UDim2.fromOffset(area, h)
         local top = math.floor(h * 0.16)
+        previewEyebrow.Position = UDim2.fromOffset(1, top - 25)
+        previewEyebrow.Size = UDim2.fromOffset(150, 20)
         local upper = math.floor(h * 0.39)
         local gap = math.max(16, math.floor(area * 0.025))
         local previewWidth = math.floor((area - gap) * 0.48)
         preview.Position = UDim2.fromOffset(0, top)
         preview.Size = UDim2.fromOffset(previewWidth, upper)
-        previewGlow.Position = UDim2.fromOffset(-3, top - 3)
-        previewGlow.Size = UDim2.fromOffset(previewWidth + 6, upper + 6)
-        previewButton.Size = UDim2.fromOffset(math.min(78, math.floor(upper * 0.3)), math.min(62, math.floor(upper * 0.25)))
+        local playSize = math.min(62, math.floor(upper * 0.38))
+        previewButton.Size = UDim2.fromOffset(playSize, playSize)
         brand.Position = UDim2.fromOffset(previewWidth + gap, top - 45)
         brand.Size = UDim2.fromOffset(area - previewWidth - gap, upper + 45)
         local logoHeight = math.floor(brand.AbsoluteSize.Y * 0.53)
         if logoHeight == 0 then logoHeight = math.floor((upper + 45) * 0.53) end
-        bigLogo.Position = UDim2.new(0.5, -logoHeight * 0.58, 0, 0)
+        bigLogo.Position = UDim2.new(0.47, -logoHeight * 0.58, 0, 0)
         bigLogo.Size = UDim2.fromOffset(math.floor(logoHeight * 1.16), logoHeight)
         bigFallback.Position = bigLogo.Position
         bigFallback.Size = bigLogo.Size
@@ -917,6 +937,13 @@ local function selectTab(tab)
         item.label.TextColor3 = chosen and ivory or gray
     end
     if tab ~= "Home" then renderSection() end
+    if motionEnabled then
+        for _, panel in ipairs(tab == "Home" and {home} or {sectionHeader, sections}) do
+            local target = panel.Position
+            panel.Position = UDim2.new(target.X.Scale, target.X.Offset + 8, target.Y.Scale, target.Y.Offset)
+            animate(panel, 0.22, {Position = target})
+        end
+    end
 end
 for name, item in pairs(navItems) do
     local target = name
@@ -929,6 +956,18 @@ for name, item in pairs(navItems) do
     end)
 end
 
+previewButton.MouseEnter:Connect(function()
+    if motionEnabled then
+        animate(playScale, 0.2, {Scale = 1.1})
+        animate(previewOutline, 0.2, {Transparency = 0.08})
+    end
+end)
+previewButton.MouseLeave:Connect(function()
+    if motionEnabled then
+        animate(playScale, 0.2, {Scale = 1})
+        animate(previewOutline, 0.2, {Transparency = 0.35})
+    end
+end)
 previewButton.MouseButton1Click:Connect(function()
     if previewAssetId == 0 then
         notify("Video preview needs a Roblox video asset ID")
@@ -1009,12 +1048,13 @@ environment.CocoHub = hubApi
 
 layout()
 if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(layout) end
-for _, entry in ipairs({assets.hubBackground, assets.hubLogo}) do
+for _, entry in ipairs({assets.hubBackground, assets.hubLogo, assets.previewStill}) do
     task.spawn(function()
         local waited = 0
         while not entry.asset and gui.Parent and waited < 10 do task.wait(0.2); waited = waited + 0.2 end
         if not gui.Parent then return end
         if entry == assets.hubBackground and entry.asset then hubBackground.Image = entry.asset end
+        if entry == assets.previewStill and entry.asset then previewImage.Image = entry.asset end
         if entry == assets.hubLogo and entry.asset then
             railLogo.Image = entry.asset
             bigLogo.Image = entry.asset
@@ -1024,5 +1064,13 @@ for _, entry in ipairs({assets.hubBackground, assets.hubLogo}) do
     end)
 end
 selectTab("Home")
+local openingScale = make("UIScale", {Scale = 0.94}, hub)
+animate(openingScale, 0.45, {Scale = 1})
+TweenService:Create(hubBackground, TweenInfo.new(7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+    Position = UDim2.fromScale(-0.035, -0.025),
+}):Play()
+TweenService:Create(bigLogo, TweenInfo.new(2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+    Rotation = 2.2,
+}):Play()
 animate(veil, 0.4, {BackgroundTransparency = 1}).Completed:Wait()
 veil:Destroy()
