@@ -354,20 +354,6 @@ local charcoal = Color3.fromRGB(18, 18, 18)
 local modules = {Game = {}, Combat = {}, Movement = {}, Visuals = {}}
 local tabs = {"Home", "Game", "Combat", "Movement", "Visuals", "Configs", "More"}
 local tabIcons = {Home = "⌂", Game = "✣", Combat = "⚔", Movement = "➤", Visuals = "◉", Configs = "⚙", More = "•••"}
-local slotIdeas = {
-    Game = {"Game profiles", "Place detection", "Game scripts"},
-    Combat = {"Aim tools", "Target tools", "Combat presets"},
-    Movement = {"Speed", "Jump", "Traversal"},
-    Visuals = {"Player overlays", "World visuals", "Display presets"},
-}
-local tabDescriptions = {
-    Game = "Scripts for the game you are playing.",
-    Combat = "Combat modules will appear here.",
-    Movement = "Movement modules will appear here.",
-    Visuals = "Visual modules will appear here.",
-    Configs = "Tune the hub to your preference.",
-    More = "About Coco Hub and future additions.",
-}
 local activeTab = "Home"
 local motionEnabled = true
 local previewAssetId = 0 -- Set to a Roblox video asset ID when a preview is uploaded.
@@ -413,11 +399,16 @@ end
 
 local hub = make("Frame", {
     Name = "MainHub",
-    Size = UDim2.fromScale(1, 1),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
+    Size = UDim2.fromOffset(790, 455),
     BackgroundColor3 = black,
     BorderSizePixel = 0,
+    ClipsDescendants = true,
     ZIndex = 2,
 }, gui)
+round(hub, 20)
+outline(hub, 0.25, 1.4)
 local hubBackground = make("ImageLabel", {
     Name = "MonochromeWaves",
     Size = UDim2.fromScale(1, 1),
@@ -646,11 +637,16 @@ local function notify(message)
 end
 
 local function viewSize()
-    return camera and camera.ViewportSize or Vector2.new(1280, 720)
+    local screen = camera and camera.ViewportSize or Vector2.new(1280, 720)
+    return Vector2.new(
+        math.max(300, math.min(790, math.floor(screen.X * 0.86))),
+        math.max(260, math.min(455, math.floor(screen.Y * 0.88)))
+    )
 end
 local function layout()
     local view = viewSize()
     local w, h = view.X, view.Y
+    hub.Size = UDim2.fromOffset(w, h)
     local portrait = w < h
     local railWidth = math.max(150, math.min(230, math.floor(w * 0.18)))
     if portrait then
@@ -671,6 +667,7 @@ local function layout()
         nav.ScrollingDirection = Enum.ScrollingDirection.X
         nav.CanvasSize = UDim2.fromOffset(#tabs * 108, 0)
         navLayout.FillDirection = Enum.FillDirection.Horizontal
+        navLayout.Padding = UDim.new(0, 7)
         for _, item in pairs(navItems) do
             item.button.Size = UDim2.fromOffset(101, 37)
             item.icon.Position = UDim2.fromOffset(8, 2)
@@ -757,8 +754,9 @@ local function layout()
         nav.Size = UDim2.new(1, -18, 1, -(brandHeight + 28))
         nav.ScrollingDirection = Enum.ScrollingDirection.Y
         navLayout.FillDirection = Enum.FillDirection.Vertical
-        local navHeight = math.min(49, math.max(34, math.floor((h - brandHeight - 55) / 7)))
-        nav.CanvasSize = UDim2.fromOffset(0, #tabs * (navHeight + 7))
+        navLayout.Padding = UDim.new(0, 4)
+        local navHeight = math.min(42, math.max(30, math.floor((h - brandHeight - 60) / 7)))
+        nav.CanvasSize = UDim2.fromOffset(0, #tabs * (navHeight + 4))
         for _, item in pairs(navItems) do
             item.button.Size = UDim2.new(1, -2, 0, navHeight)
             item.icon.Position = UDim2.fromOffset(12, 0)
@@ -802,7 +800,7 @@ local function layout()
         info.Position = UDim2.fromOffset(0, infoY)
         info.Size = UDim2.fromOffset(area, infoHeight)
         local profileWidth = math.floor(area * 0.36)
-        local executorWidth = math.floor(area * 0.22)
+        local executorWidth = math.max(145, math.floor(area * 0.22))
         profile.Position = UDim2.fromOffset(11, 0)
         profile.Size = UDim2.fromOffset(profileWidth - 17, infoHeight)
         executorPanel.Position = UDim2.fromOffset(profileWidth + 9, 0)
@@ -877,23 +875,6 @@ local function sectionCard(height)
     outline(card, 0.42, 1)
     return card
 end
-local function slotCard(titleValue, detail)
-    local card = sectionCard(95)
-    local icon = text(card, "+", 29, Enum.Font.GothamMedium, Enum.TextXAlignment.Center, 7)
-    icon.Position = UDim2.fromOffset(16, 20)
-    icon.Size = UDim2.fromOffset(52, 52)
-    icon.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    round(icon, 15)
-    outline(icon, 0.6, 1)
-    local name = text(card, titleValue, 19, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
-    name.Position = UDim2.fromOffset(82, 19)
-    name.Size = UDim2.new(1, -98, 0, 28)
-    local sub = text(card, detail, 13, Enum.Font.Gotham, Enum.TextXAlignment.Left, 7)
-    sub.TextColor3 = gray
-    sub.Position = UDim2.fromOffset(83, 53)
-    sub.Size = UDim2.new(1, -100, 0, 24)
-    sub.TextWrapped = true
-end
 local function moduleCard(module)
     local card = sectionCard(105)
     local name = text(card, module.title, 20, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
@@ -913,56 +894,13 @@ local function moduleCard(module)
         notify(ok and (module.title .. " launched") or ("Module error: " .. tostring(err)))
     end)
 end
-local renderSection
-local function settingCard(nameValue, detail, value, action)
-    local card = sectionCard(92)
-    local name = text(card, nameValue, 19, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
-    name.Position = UDim2.fromOffset(18, 17)
-    name.Size = UDim2.new(1, -145, 0, 27)
-    local sub = text(card, detail, 13, Enum.Font.Gotham, Enum.TextXAlignment.Left, 7)
-    sub.TextColor3 = gray
-    sub.Position = UDim2.fromOffset(18, 51)
-    sub.Size = UDim2.new(1, -145, 0, 28)
-    local button = roundedButton(card, value, UDim2.fromOffset(102, 36), 8)
-    button.AnchorPoint = Vector2.new(1, 0.5)
-    button.Position = UDim2.new(1, -18, 0.5, 0)
-    button.TextSize = 13
-    button.MouseButton1Click:Connect(action)
-    return button
-end
-renderSection = function()
+local function renderSection()
     clearSection()
     sectionTitle.Text = string.upper(activeTab)
-    sectionSubtitle.Text = tabDescriptions[activeTab] or ""
-    if activeTab == "Game" then
-        local card = sectionCard(105)
-        local name = text(card, game.Name, 21, Enum.Font.GothamBold, Enum.TextXAlignment.Left, 7)
-        name.Position = UDim2.fromOffset(18, 16)
-        name.Size = UDim2.new(1, -36, 0, 32)
-        name.TextTruncate = Enum.TextTruncate.AtEnd
-        local id = text(card, "Place ID: " .. tostring(game.PlaceId), 14, Enum.Font.Gotham, Enum.TextXAlignment.Left, 7)
-        id.TextColor3 = gray
-        id.Position = UDim2.fromOffset(19, 55)
-        id.Size = UDim2.new(1, -38, 0, 25)
-    end
-    if modules[activeTab] then
-        if #modules[activeTab] == 0 then
-            for _, idea in ipairs(slotIdeas[activeTab]) do slotCard(idea, "Ready for a future universal module") end
-        else
-            for _, module in ipairs(modules[activeTab]) do moduleCard(module) end
-        end
-    elseif activeTab == "Configs" then
-        settingCard("UI animations", "Transitions and glow effects", motionEnabled and "ON" or "OFF", function()
-            motionEnabled = not motionEnabled
-            renderSection()
-            notify("Animations " .. (motionEnabled and "enabled" or "reduced"))
-        end)
-        settingCard("Preview video", "Requires a Roblox video asset ID", previewAssetId ~= 0 and "SET" or "NONE", function()
-            notify("Set a Roblox video asset ID in the script to enable preview")
-        end)
-    elseif activeTab == "More" then
-        slotCard("Coco Hub prototype", "The home for universal scripts and future modules")
-        slotCard("Module registry", "Register scripts into Game, Combat, Movement, or Visuals")
+    sectionSubtitle.Text = ""
+    local registered = modules[activeTab]
+    if registered then
+        for _, module in ipairs(registered) do moduleCard(module) end
     end
 end
 local function selectTab(tab)
